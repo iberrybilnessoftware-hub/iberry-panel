@@ -212,3 +212,20 @@ td.sonuk, .sonuk { color: var(--metin-2); }
   .icerik { padding: 20px 16px 50px; }
   .tablo-sar { overflow-x: auto; }
 }
+
+/* SQL konsolu giriş alanı */
+.sql-alan {
+  width: 100%;
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: var(--r);
+  color: var(--metin);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  resize: vertical;
+  margin-bottom: 12px;
+  tab-size: 2;
+}
+.sql-alan:focus { outline: none; border-color: var(--mavi); }

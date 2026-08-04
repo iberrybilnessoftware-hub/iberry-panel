@@ -29,6 +29,16 @@ interface Durum {
   };
   ai: { saglayici: string | null; model: string | null; anahtar: { tanimli: boolean; uzunluk: number } };
   entegrasyon: { apiAnahtari: { tanimli: boolean; uzunluk: number }; b2bWebhook: string | null };
+  sunucu:
+    | { var: false }
+    | {
+        var: true; makine: string; cekirdek: number; yasSn: number; taze: boolean;
+        yuk: { d1: number | null; d5: number | null; d15: number | null };
+        bellek: { toplamGb: number; kullanilanGb: number; yuzde: number };
+        disk: { toplamGb: number; kullanilanGb: number; yuzde: number } | null;
+        calismaSuresiSn: number;
+        konteynerler: Array<{ ad: string; durum: string; aciklama: string }>;
+      };
   hataAkisi: { adet: number; kapasite: number; enEski: string | null };
 }
 
@@ -136,6 +146,66 @@ export default function SistemDurumu() {
           <h2>Entegrasyon</h2>
           <div className="satir"><span>API anahtarı</span><span><Var v={d.entegrasyon.apiAnahtari} /></span></div>
           <div className="satir"><span>B2B webhook</span><span>{d.entegrasyon.b2bWebhook ?? '—'}</span></div>
+        </section>
+
+        <section className="kart">
+          <h2>Sunucu</h2>
+          {!d.sunucu.var ? (
+            <p className="sonuk" style={{ fontSize: 12.5, margin: 0 }}>
+              Sunucu ajanı bildirim göndermemiş. Host değerleri konteynerin içinden
+              görünmüyor; <code>agent/sunucu-ajani.mjs</code> sunucuda çalışmalı.
+            </p>
+          ) : (
+            <>
+              <div className="satir">
+                <span>Makine</span>
+                <span>
+                  {d.sunucu.makine}{' '}
+                  {d.sunucu.taze
+                    ? <span className="rozet r-ok">{d.sunucu.yasSn} sn önce</span>
+                    : <span className="rozet r-hata">{Math.round(d.sunucu.yasSn / 60)} dk önce — bayat</span>}
+                </span>
+              </div>
+              {/* Yük çekirdek sayısıyla birlikte okunmalı: 8 çekirdekte 4.0
+                  yarı doluluk, 2 çekirdekte iki kat aşırı yük demek. */}
+              <div className="satir">
+                <span>Yük (1/5/15 dk)</span>
+                <span>
+                  {d.sunucu.yuk.d1?.toFixed(2)} / {d.sunucu.yuk.d5?.toFixed(2)} / {d.sunucu.yuk.d15?.toFixed(2)}
+                  <span className="sonuk"> · {d.sunucu.cekirdek} çekirdek</span>
+                </span>
+              </div>
+              <div className="satir">
+                <span>Bellek</span>
+                <span>
+                  {d.sunucu.bellek.kullanilanGb} / {d.sunucu.bellek.toplamGb} GB{' '}
+                  <span className={`rozet ${d.sunucu.bellek.yuzde > 90 ? 'r-hata' : d.sunucu.bellek.yuzde > 75 ? 'r-uyari' : 'r-sonuk'}`}>
+                    %{d.sunucu.bellek.yuzde}
+                  </span>
+                </span>
+              </div>
+              {d.sunucu.disk && (
+                <div className="satir">
+                  <span>Disk</span>
+                  <span>
+                    {d.sunucu.disk.kullanilanGb} / {d.sunucu.disk.toplamGb} GB{' '}
+                    <span className={`rozet ${d.sunucu.disk.yuzde > 90 ? 'r-hata' : d.sunucu.disk.yuzde > 80 ? 'r-uyari' : 'r-sonuk'}`}>
+                      %{d.sunucu.disk.yuzde}
+                    </span>
+                  </span>
+                </div>
+              )}
+              <div className="satir"><span>Ayakta</span><span>{sure(d.sunucu.calismaSuresiSn)}</span></div>
+              {d.sunucu.konteynerler.map((k) => (
+                <div className="satir" key={k.ad}>
+                  <span>{k.ad}</span>
+                  <span>
+                    <span className={`rozet ${k.durum === 'running' ? 'r-ok' : 'r-hata'}`}>{k.durum}</span>
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
         </section>
 
         <section className="kart">

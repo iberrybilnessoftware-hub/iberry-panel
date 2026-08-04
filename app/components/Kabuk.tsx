@@ -7,9 +7,13 @@ import { api, girisYap, jetonAl, jetonSil } from '../lib/api';
 
 const BOLUMLER = [
   { yol: '/', ad: 'Sistem Durumu', ikon: '◉' },
+  { yol: '/sql', ad: 'SQL Konsolu', ikon: '⌗' },
+  { yol: '/gunluk', ad: 'Sunucu Günlüğü', ikon: '▤' },
   { yol: '/hatalar', ad: 'Hata Akışı', ikon: '⚠' },
-  { yol: '/sozluk', ad: 'Hata Sözlüğü', ikon: '⌘' },
+  { yol: '/deploy', ad: 'Deploy', ikon: '↑' },
+  { yol: '/ayarlar', ad: 'Ayarlar', ikon: '⚙' },
   { yol: '/denetim', ad: 'Denetim Kayıtları', ikon: '☰' },
+  { yol: '/sozluk', ad: 'Hata Sözlüğü', ikon: '⌘' },
 ];
 
 /**
