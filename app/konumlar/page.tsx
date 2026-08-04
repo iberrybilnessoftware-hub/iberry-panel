@@ -33,6 +33,33 @@ interface Ayar { anahtar: string; deger: string; kaynak: string }
 const tarih = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
+/**
+ * Tek bir adresi kapsayan blok.
+ *
+ * MASKE ADRES AİLESİNE GÖRE DEĞİŞİYOR. Burada sabit `/32` yazılıydı ve
+ * IPv6'da yanlış sonuç veriyordu: `::1/32` tek makine değil, ilk 32 biti
+ * eşleşen KOCAMAN bir blok demek. Yerelde `::1/32` diye kaydedilmiş bir
+ * satır bu yüzden oluştu. IPv4'te tek host /32, IPv6'da /128.
+ */
+const tekAdres = (ip: string) => `${ip}/${ip.includes(':') ? 128 : 32}`;
+
+/** Bu kadar süre görülmeyen kayıt için adres değişmiş uyarısı çıkıyor. */
+const BAYAT_GUN = 7;
+
+/**
+ * "Bu kayıt hâlâ doğru mu?"
+ *
+ * Adres değişikliği SESSİZ bir arıza: sağlayıcı IP'yi değiştirdiğinde
+ * kayıt olduğu gibi duruyor, yalnız artık kimseyle eşleşmiyor. Kapı
+ * kapalıysa kimse fark etmiyor — satışlar şubesiz düşmeye başlıyor.
+ * `lastSeenAt` bunu görünür kılan tek işaret.
+ */
+function bayatlik(iso: string | null): string | null {
+  if (!iso) return 'hiç görülmedi';
+  const gun = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  return gun >= BAYAT_GUN ? `${gun} gündür görülmedi` : null;
+}
+
 export default function Konumlar() {
   const [konumlar, setKonumlar] = useState<Konum[] | null>(null);
   const [ben, setBen] = useState<Neredeyim | null>(null);
@@ -44,6 +71,27 @@ export default function Konumlar() {
   const [cidr, setCidr] = useState('');
   const [sube, setSube] = useState('');
   const [hizliSube, setHizliSube] = useState('');
+
+  /*
+   * Satır içi düzenleme.
+   *
+   * NİYE GEREKLİ: mağazaların adresi sabit değil, sağlayıcı değiştiriyor.
+   * Düzenleme olmadan tek yol "sil + yeniden ekle" idi ve bu kapı açıkken
+   * TEHLİKELİ: silme ile ekleme arasındaki anda o ağdan kimse giremiyor,
+   * yanlış adres yazılırsa da geri dönülemiyor.
+   */
+  const [duzenlenen, setDuzenlenen] = useState<string | null>(null);
+  const [dAd, setDAd] = useState('');
+  const [dCidr, setDCidr] = useState('');
+  const [dSube, setDSube] = useState('');
+
+  const duzenlemeBaslat = (k: Konum) => {
+    setDuzenlenen(k.id);
+    setDAd(k.label);
+    setDCidr(k.cidr);
+    setDSube(k.branchId ?? '');
+    setHata(null);
+  };
 
   /*
    * Üçü birlikte tazeleniyor: her konum değişikliği şubenin bağlı ağ
@@ -118,6 +166,40 @@ export default function Konumlar() {
     finally { setMesgul(false); }
   };
 
+  /**
+   * Düzenlemeyi kaydeder.
+   *
+   * KİLİTLENME UYARISI yalnız GERÇEKTEN riskli durumda çıkıyor: şu an bu
+   * kayıt üzerinden bağlıysanız, kapı açıksa ve adresi değiştiriyorsanız.
+   * Adresi değişmiş bir mağazada duruyorsanız zaten hiçbir kayda
+   * eşleşmiyorsunuz (`matched` boş), dolayısıyla kaydı kendi adresinize
+   * çekmek erişiminizi yalnız İYİLEŞTİREBİLİR — orada uyarı gürültü olurdu.
+   */
+  const duzenlemeKaydet = async (k: Konum) => {
+    const yeniCidr = dCidr.trim();
+    const yeniAd = dAd.trim();
+    if (!yeniAd || !yeniCidr) { setHata('Ad ve adres boş olamaz'); return; }
+
+    if (ben?.matched?.locationId === k.id && ben.enforcement === 'on' && yeniCidr !== k.cidr) {
+      if (!confirm(
+        `"${k.label}" şu an SİZİN bağlandığınız kayıt ve kapı açık.\n\n`
+        + `Adres ${k.cidr} → ${yeniCidr} olarak değişecek. Yeni adres sizi kapsamıyorsa `
+        + 'bu ağdan kimse giriş yapamaz ve bu ekrana ulaşamazsınız.\n\nDevam edilsin mi?',
+      )) return;
+    }
+
+    setMesgul(true);
+    try {
+      await api(`locations/${k.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ label: yeniAd, cidr: yeniCidr, branchId: dSube || null }),
+      });
+      setDuzenlenen(null);
+      await yukle();
+    } catch (e) { setHata(e instanceof Error ? e.message : 'Güncellenemedi'); }
+    finally { setMesgul(false); }
+  };
+
   const sil = async (k: Konum) => {
     const kendimiz = ben?.matched?.locationId === k.id;
     if (!confirm(kendimiz && ben?.enforcement === 'on'
@@ -129,7 +211,7 @@ export default function Konumlar() {
     finally { setMesgul(false); }
   };
 
-  const buAdresKayitli = konumlar?.some((k) => k.cidr === `${ben?.ip}/32` || k.cidr === ben?.ip);
+  const buAdresKayitli = konumlar?.some((k) => k.cidr === tekAdres(ben?.ip ?? '') || k.cidr === ben?.ip);
 
   return (
     <>
@@ -187,7 +269,7 @@ export default function Konumlar() {
             <button
               type="button"
               disabled={mesgul}
-              onClick={() => void ekle(`${ben.ip}/32`, subeler.find((s) => s.id === hizliSube)?.name ?? 'Ofis', hizliSube)}
+              onClick={() => void ekle(tekAdres(ben.ip), subeler.find((s) => s.id === hizliSube)?.name ?? 'Ofis', hizliSube)}
             >
               {ben.ip} adresini ekle
             </button>
@@ -210,7 +292,35 @@ export default function Konumlar() {
             <table>
               <thead><tr><th>Ad</th><th>Adres</th><th>Mağaza</th><th>Son görülme</th><th /></tr></thead>
               <tbody>
-                {konumlar.map((k) => (
+                {konumlar.map((k) => (duzenlenen === k.id ? (
+                  <tr key={k.id}>
+                    <td><input value={dAd} onChange={(e) => setDAd(e.target.value)} style={{ width: '100%' }} /></td>
+                    <td>
+                      <input className="mono" value={dCidr} onChange={(e) => setDCidr(e.target.value)} style={{ width: '100%' }} />
+                      {/*
+                        Asıl işlem bu: mağazadasınız, adres değişmiş, tek tıkla
+                        şu anki adresi alıyorsunuz. Doldurur, kaydetmez —
+                        Kaydet'e basmadan hiçbir şey değişmiyor.
+                      */}
+                      {ben && dCidr !== tekAdres(ben.ip) && (
+                        <button type="button" className="mini" style={{ marginTop: 4 }} onClick={() => setDCidr(tekAdres(ben.ip))}>
+                          şu anki adresi kullan ({ben.ip})
+                        </button>
+                      )}
+                    </td>
+                    <td>
+                      <select value={dSube} onChange={(e) => setDSube(e.target.value)} style={{ width: '100%' }}>
+                        <option value="">Merkez / ofis (şubesiz)</option>
+                        {subeler.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </td>
+                    <td className="mono sonuk">{tarih(k.lastSeenAt)}</td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button type="button" className="mini" disabled={mesgul} onClick={() => void duzenlemeKaydet(k)}>Kaydet</button>
+                      <button type="button" className="mini" disabled={mesgul} onClick={() => setDuzenlenen(null)}>Vazgeç</button>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={k.id} style={{ opacity: k.isActive ? 1 : 0.5 }}>
                     <td>
                       {k.label}
@@ -218,15 +328,25 @@ export default function Konumlar() {
                     </td>
                     <td className="mono">{k.cidr}</td>
                     <td>{k.branch ? k.branch.name : <span className="sonuk">merkez / ofis</span>}</td>
-                    <td className="mono sonuk">{tarih(k.lastSeenAt)}</td>
+                    <td className="mono sonuk">
+                      {tarih(k.lastSeenAt)}
+                      {k.isActive && bayatlik(k.lastSeenAt) && (
+                        <div>
+                          <span className="rozet r-uyari" title="Sağlayıcı adresi değiştirmiş olabilir — Düzenle ile güncelleyin">
+                            {bayatlik(k.lastSeenAt)}
+                          </span>
+                        </div>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button type="button" className="mini" disabled={mesgul} onClick={() => duzenlemeBaslat(k)}>Düzenle</button>
                       <button type="button" className="mini" disabled={mesgul} onClick={() => void degistir(k, { isActive: !k.isActive })}>
                         {k.isActive ? 'Kapat' : 'Aç'}
                       </button>
                       <button type="button" className="mini sil" disabled={mesgul} onClick={() => void sil(k)}>Sil</button>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -268,7 +388,7 @@ export default function Konumlar() {
                           className="mini"
                           disabled={mesgul}
                           title={`Şu an bulunduğunuz ${ben.ip} adresini bu şubeye bağla`}
-                          onClick={() => void ekle(`${ben.ip}/32`, s.name, s.id)}
+                          onClick={() => void ekle(tekAdres(ben.ip), s.name, s.id)}
                         >
                           Buradaki adresi bağla
                         </button>
