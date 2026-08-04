@@ -229,3 +229,12 @@ td.sonuk, .sonuk { color: var(--metin-2); }
   tab-size: 2;
 }
 .sql-alan:focus { outline: none; border-color: var(--mavi); }
+
+/* Tablo içi küçük eylem düğmeleri */
+.mini {
+  border: 1px solid var(--cizgi); background: var(--kart-2); color: var(--metin-2);
+  border-radius: 6px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; margin-left: 5px;
+}
+.mini:hover { color: var(--metin); border-color: var(--metin-2); }
+.mini.sil:hover { color: var(--hata); border-color: var(--hata); }
+.mini:disabled { opacity: 0.45; cursor: default; }

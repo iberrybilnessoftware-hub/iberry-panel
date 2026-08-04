@@ -7,6 +7,7 @@ import { api, girisYap, jetonAl, jetonSil } from '../lib/api';
 
 const BOLUMLER = [
   { yol: '/', ad: 'Sistem Durumu', ikon: '◉' },
+  { yol: '/konumlar', ad: 'Konumlar', ikon: '◎' },
   { yol: '/sql', ad: 'SQL Konsolu', ikon: '⌗' },
   { yol: '/gunluk', ad: 'Sunucu Günlüğü', ikon: '▤' },
   { yol: '/hatalar', ad: 'Hata Akışı', ikon: '⚠' },
