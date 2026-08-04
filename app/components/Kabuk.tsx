@@ -74,9 +74,12 @@ function Giris({ onOldu }: { onOldu: (ad: string) => void }) {
           try {
             const u = await girisYap(email, sifre);
             // İzni olmayan içeri girip her yerde boş ekran görmesin.
-            if (!u.permissions.includes('audit.view')) {
+            // Panelin izni `platform.manage` — yöneticinin (admin) üstünde.
+            // Önce audit.view'a bakıyordu; o izin manager ve auditor
+            // rollerinde de var, yani şube müdürü ham SQL çalıştırabiliyordu.
+            if (!u.permissions.includes('platform.manage')) {
               jetonSil();
-              setHata('Bu hesapta geliştirici paneli izni (audit.view) yok.');
+              setHata('Bu hesap platform sahibi değil. Panel platform.manage izni istiyor.');
               return;
             }
             onOldu(u.fullName);
