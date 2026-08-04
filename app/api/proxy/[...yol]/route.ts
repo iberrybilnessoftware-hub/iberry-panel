@@ -38,11 +38,25 @@ async function gecir(req: NextRequest, yol: string[]) {
   const govde = req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text();
 
   try {
+    /*
+     * GERÇEK İSTEMCİ ADRESİNİ TAŞI.
+     *
+     * Vekil sunucu tarafında çalıştığı için merkez API, isteği panelin
+     * adresinden (Docker köprüsü) geliyor sanıyordu. Konum eşleşmesi bu
+     * yüzden hep başarısızdı: kullanıcı kayıtlı bir ağdan bağlansa bile
+     * "tanınmayan ağ" hatası alıyordu.
+     *
+     * Zinciri Caddy kuruyor, biz yalnız devam ettiriyoruz. Tarayıcının
+     * iddiasına değil, Caddy'nin yazdığına güveniliyor.
+     */
+    const gercekIp = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip');
+
     const res = await fetch(url, {
       method: req.method,
       headers: {
         'content-type': 'application/json',
         ...(auth ? { authorization: auth } : {}),
+        ...(gercekIp ? { 'x-forwarded-for': gercekIp } : {}),
       },
       body: govde,
       cache: 'no-store',
