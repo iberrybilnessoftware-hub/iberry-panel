@@ -26,7 +26,7 @@ interface Neredeyim {
   matched: { locationId: string; label: string; branchId: string | null } | null;
 }
 
-interface Sube { id: string; code: string; name: string }
+interface Sube { id: string; code: string; name: string; isActive: boolean; konumSayisi: number }
 
 interface Ayar { anahtar: string; deger: string; kaynak: string }
 
@@ -45,32 +45,32 @@ export default function Konumlar() {
   const [sube, setSube] = useState('');
   const [hizliSube, setHizliSube] = useState('');
 
+  /*
+   * Üçü birlikte tazeleniyor: her konum değişikliği şubenin bağlı ağ
+   * sayısını da değiştiriyor, ayrı yüklenselerdi "adres bekliyor" rozeti
+   * ekleme sonrası kırmızı kalırdı.
+   *
+   * ŞUBE LİSTESİ ÖNCEDEN SQL KONSOLUNDAN geliyordu; canlıda konsol kapalı
+   * (DATABASE_URL_RO tanımsız) olduğu için liste sessizce yedeğe düşüyor,
+   * yalnız ZATEN bir konuma bağlı şubeler görünüyordu. Yeni açılan şube
+   * listede çıkmıyor, konum bağlanmadan da çıkamıyordu — kısır döngü.
+   *
+   * `/dev/branches` panelin tek yetkisiyle (`platform.manage`) çalışıyor;
+   * `/branches` ucu `branch.view` isteseydi panel ikinci bir yetkiye
+   * bağlanırdı.
+   */
   const yukle = useCallback(async () => {
     try {
-      const [k, b] = await Promise.all([
+      const [k, b, s] = await Promise.all([
         api<Konum[]>('locations'),
         api<Neredeyim>('locations/whoami'),
+        api<Sube[]>('dev/branches'),
       ]);
-      setKonumlar(k); setBen(b); setHata(null);
-      // Şube listesi konumlardan çıkarılıyor: ayrı bir uç için vekile yeni
-      // bir yol açmak gerekirdi, gerek yok.
-      const gorulen = new Map<string, Sube>();
-      for (const x of k) if (x.branch) gorulen.set(x.branch.id, x.branch);
-      if (gorulen.size) setSubeler([...gorulen.values()]);
+      setKonumlar(k); setBen(b); setSubeler(s); setHata(null);
     } catch (e) { setHata(e instanceof Error ? e.message : 'Alınamadı'); }
   }, []);
 
   useEffect(() => { void yukle(); }, [yukle]);
-
-  // Şubeleri tam liste olarak SQL'den al — konumlarda görünmeyenler de lazım.
-  useEffect(() => {
-    void api<{ satirlar: Array<{ id: string; code: string; name: string }> }>('dev/sql', {
-      method: 'POST',
-      body: JSON.stringify({ sql: 'select id::text, code, name from branches where is_active and deleted_at is null order by code' }),
-    })
-      .then((r) => setSubeler(r.satirlar))
-      .catch(() => { /* SQL konsolu kapalıysa konumlardan çıkarılanlarla yetin */ });
-  }, []);
 
   const kapiDegistir = async (yeni: 'on' | 'off') => {
     // KİLİTLENME KORUMASI: kapıyı açarken şu anki adres eşleşmiyorsa, bu
@@ -231,6 +231,60 @@ export default function Konumlar() {
             </table>
           </div>
         )}
+      </section>
+
+      {/*
+        Şubeler — Central'da açılanlar burada görünür ve adres bekleyenler
+        işaretlenir. Şube açmak Central'ın işi, adres vermek panelin işi;
+        bu liste ikisi arasındaki devir teslim noktası.
+      */}
+      <section style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--metin-2)', margin: '0 0 10px' }}>
+          Şubeler ({subeler.length})
+        </h2>
+        {subeler.length === 0 ? (
+          <div className="bos">Şube listesi alınamadı.</div>
+        ) : (
+          <div className="tablo-sar">
+            <table>
+              <thead><tr><th>Şube</th><th>Kod</th><th>Bağlı ağ</th><th /></tr></thead>
+              <tbody>
+                {subeler.map((s) => (
+                  <tr key={s.id} style={{ opacity: s.isActive ? 1 : 0.5 }}>
+                    <td>
+                      {s.name}
+                      {!s.isActive && <span className="rozet r-sonuk" style={{ marginLeft: 8 }}>kapalı</span>}
+                    </td>
+                    <td className="mono sonuk">{s.code}</td>
+                    <td>
+                      {s.konumSayisi > 0
+                        ? <span className="rozet r-ok">{s.konumSayisi} ağ</span>
+                        : <span className="rozet r-hata">adres bekliyor</span>}
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {s.konumSayisi === 0 && ben && !buAdresKayitli && (
+                        <button
+                          type="button"
+                          className="mini"
+                          disabled={mesgul}
+                          title={`Şu an bulunduğunuz ${ben.ip} adresini bu şubeye bağla`}
+                          onClick={() => void ekle(`${ben.ip}/32`, s.name, s.id)}
+                        >
+                          Buradaki adresi bağla
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="altbaslik" style={{ fontSize: 12, marginTop: 8 }}>
+          Ağı olmayan şubede satış o şubeye yazılmaz — kasiyerin hangi mağazada
+          olduğu bu adreslerden çözülüyor. Şube açma/kapama Central&apos;da
+          (Yönetim → Ayarlar → Şubeler).
+        </p>
       </section>
 
       <section>
