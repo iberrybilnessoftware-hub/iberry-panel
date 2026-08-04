@@ -1,3 +1,14 @@
+# Next.js standalone çıktısı pnpm'in katı düzeniyle çalışmıyor.
+#
+# pnpm varsayılanda her paketi kendi klasörüne koyup sembolik bağ kuruyor;
+# Next'in dosya izleyicisi dolaylı bağımlılıkları (styled-jsx gibi) o düzende
+# göremiyor ve standalone çıktısına koymuyor. Sunucuda uygulama
+# "Cannot find module 'styled-jsx/package.json'" ile açılmıyordu.
+#
+# Düz düzen npm'inkine benziyor ve izleyici beklediğini buluyor.
+# (pnpm 11 bu ayarı .npmrc'de değil burada okuyor.)
+nodeLinker: hoisted
+
 # pnpm 11 bağımlılıkların kurulum betiklerini varsayılan olarak engelliyor ve
 # engellediğinde `pnpm install` hata veriyor (ERR_PNPM_IGNORED_BUILDS). Bu liste
 # olmadan temiz bir makinede repo kurulamıyor.

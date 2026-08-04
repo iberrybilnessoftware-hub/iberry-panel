@@ -1,0 +1,77 @@
+name: Deploy panel (BirCloud)
+
+# Panel Next.js: statik değil, çalışan bir süreç. Bu yüzden yönetim
+# konsolundaki "dist klasörünü kopyala" kalıbı işe yaramıyor —
+# `standalone` çıktısı taşınıyor ve systemd servisi yeniden başlatılıyor.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-panel
+  cancel-in-progress: false
+
+env:
+  HEDEF_DIZIN: /var/www/panel
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.10.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run build
+
+      - name: SSH anahtarını hazırla
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Çıktıyı topla
+        # standalone, static ve public'i AYRI üretiyor; üçü bir araya
+        # gelmezse sayfa açılır ama CSS ve JS 404 verir.
+        run: |
+          mkdir -p paket
+          cp -r .next-build/standalone/. paket/
+          mkdir -p paket/.next-build/static
+          cp -r .next-build/static/. paket/.next-build/static/
+          [ -d public ] && cp -r public paket/public || true
+
+      - name: Sunucuya gönder
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o BatchMode=yes" \
+            paket/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:$HEDEF_DIZIN/"
+
+      - name: Servisi yeniden başlat
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "sudo systemctl restart iberry-panel && sleep 3 && systemctl is-active iberry-panel"
+
+      - name: Ayakta mı
+        # Deploy'un "başarılı" görünüp sitenin açılmaması en can sıkıcı
+        # durum; sonuna gerçek bir istek atıyoruz.
+        run: |
+          for i in $(seq 1 10); do
+            kod=$(curl -s -o /dev/null -w '%{http_code}' https://panel.furkantandogan.com/ || true)
+            [ "$kod" = "200" ] && echo "✓ panel ayakta" && exit 0
+            sleep 5
+          done
+          echo "✗ panel 200 dönmedi (son kod: $kod)"
+          exit 1

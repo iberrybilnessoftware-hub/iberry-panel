@@ -2,6 +2,24 @@
 const nextConfig = {
   reactStrictMode: true,
   /*
+   * Sunucuya taşınacak kendi kendine yeten çıktı.
+   *
+   * Panel statik değil: /api/proxy rotası sunucu tarafında çalışıyor (GitHub
+   * jetonu ve merkez API adresi tarayıcıya inmesin diye). Bu yüzden yönetim
+   * konsolu gibi dosya kopyalayıp bırakamıyoruz, çalışan bir süreç gerekiyor.
+   * `standalone`, node_modules'ü de içine katarak tek klasör üretiyor.
+   */
+  output: 'standalone',
+  /*
+   * Dosya izini bu klasörle sınırla.
+   *
+   * Aksi hâlde Next yukarı doğru yürüyüp (üstteki klasörlerde lockfile
+   * arıyor) çıktıyı `standalone/Desktop/IBERRY-repos/dev-console/...`
+   * diye iç içe üretiyor; systemd'nin çalıştıracağı yol tahmin edilemez
+   * hâle geliyor.
+   */
+  outputFileTracingRoot: import.meta.dirname,
+  /*
    * Üretim derlemesi AYRI klasöre yazıyor.
    *
    * Varsayılanda `next build` ve `next dev` aynı `.next` klasörünü
