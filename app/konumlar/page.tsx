@@ -84,6 +84,10 @@ export default function Konumlar() {
   const [dAd, setDAd] = useState('');
   const [dCidr, setDCidr] = useState('');
   const [dSube, setDSube] = useState('');
+  /** Silme onayı bekleyen satır — iki adımlı, yanlışlıkla silinmesin. */
+  const [silOnay, setSilOnay] = useState<string | null>(null);
+  /** Kapalı tutulan şube grupları; varsayılan AÇIK, ağları görmek asıl iş. */
+  const [kapaliGrup, setKapaliGrup] = useState<string[]>([]);
 
   const duzenlemeBaslat = (k: Konum) => {
     setDuzenlenen(k.id);
@@ -200,18 +204,123 @@ export default function Konumlar() {
     finally { setMesgul(false); }
   };
 
+  /*
+   * Silme onayı satır içinde, `confirm()` ile değil.
+   *
+   * Yerleşik kutu neyi sildiğinizi metin olarak tekrar ediyordu; satır
+   * içinde kaydın kendisi zaten gözünüzün önünde duruyor. Asıl kazanç
+   * tehlike uyarısını KIRMIZI ve yerinde gösterebilmek.
+   */
   const sil = async (k: Konum) => {
-    const kendimiz = ben?.matched?.locationId === k.id;
-    if (!confirm(kendimiz && ben?.enforcement === 'on'
-      ? `"${k.label}" şu an SİZİN bağlandığınız kayıt ve kapı açık. Silerseniz bu ağdan kimse giriş yapamaz.\n\nSilinsin mi?`
-      : `"${k.label}" silinsin mi?`)) return;
     setMesgul(true);
-    try { await api(`locations/${k.id}`, { method: 'DELETE' }); await yukle(); }
-    catch (e) { setHata(e instanceof Error ? e.message : 'Silinemedi'); }
+    try {
+      await api(`locations/${k.id}`, { method: 'DELETE' });
+      setSilOnay(null);
+      await yukle();
+    } catch (e) { setHata(e instanceof Error ? e.message : 'Silinemedi'); }
     finally { setMesgul(false); }
   };
 
   const buAdresKayitli = konumlar?.some((k) => k.cidr === tekAdres(ben?.ip ?? '') || k.cidr === ben?.ip);
+
+  /*
+   * Ağlar ŞUBE ALTINDA gruplanıyor.
+   *
+   * Önce iki ayrı tablo vardı — "kayıtlı konumlar" ve "şubeler" — ve
+   * "Ümraniye'ye kaç ağ bağlı" sorusunun cevabı ikisini kafada
+   * birleştirmeyi gerektiriyordu. Şube tek başlık, ağları altında.
+   *
+   * Şubesiz kayıtlar (merkez/ofis) en sona ayrı grup olarak düşüyor;
+   * silinmiyorlar, çünkü giriş yetkisi veriyorlar ama satışı bir şubeye
+   * yazmıyorlar — bu ayrımın görünmesi gerek.
+   */
+  const gruplar = subeler.map((s) => ({
+    sube: s,
+    aglar: (konumlar ?? []).filter((k) => k.branchId === s.id),
+  }));
+  const subesiz = (konumlar ?? []).filter((k) => !k.branchId);
+
+  /** Bir ağ kaydının satırı — düzenleme, silme onayı ve normal görünüm. */
+  const agSatiri = (k: Konum) => {
+    if (duzenlenen === k.id) {
+      return (
+        <tr key={k.id}>
+          <td><input value={dAd} onChange={(e) => setDAd(e.target.value)} style={{ width: '100%' }} /></td>
+          <td>
+            <input className="mono" value={dCidr} onChange={(e) => setDCidr(e.target.value)} style={{ width: '100%' }} />
+            {/*
+              Asıl işlem bu: mağazadasınız, adres değişmiş, tek tıkla şu anki
+              adresi alıyorsunuz. Doldurur, kaydetmez — Kaydet'e basmadan
+              hiçbir şey değişmiyor.
+            */}
+            {ben && dCidr !== tekAdres(ben.ip) && (
+              <button type="button" className="mini" style={{ marginTop: 4 }} onClick={() => setDCidr(tekAdres(ben.ip))}>
+                şu anki adresi kullan ({ben.ip})
+              </button>
+            )}
+            {/* Şube de buradan değişebiliyor: bir ağı başka mağazaya taşımak
+                ayrı bir ekran gerektirmesin. */}
+            <select value={dSube} onChange={(e) => setDSube(e.target.value)} style={{ width: '100%', marginTop: 4 }}>
+              <option value="">Merkez / ofis (şubesiz)</option>
+              {subeler.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </td>
+          <td className="mono sonuk">{tarih(k.lastSeenAt)}</td>
+          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+            <button type="button" className="mini" disabled={mesgul} onClick={() => void duzenlemeKaydet(k)}>Kaydet</button>
+            <button type="button" className="mini" disabled={mesgul} onClick={() => setDuzenlenen(null)}>Vazgeç</button>
+          </td>
+        </tr>
+      );
+    }
+
+    if (silOnay === k.id) {
+      // Kayıt zaten gözünüzün önünde; burada yalnız SONUCU söylüyoruz.
+      const kendimiz = ben?.matched?.locationId === k.id && ben.enforcement === 'on';
+      return (
+        <tr key={k.id}>
+          <td colSpan={3} style={{ color: 'var(--hata)' }}>
+            <b>{k.label}</b> ({k.cidr}) silinsin mi?{' '}
+            {kendimiz
+              ? 'ŞU AN bu kayıt üzerinden bağlısınız ve kapı açık — silerseniz bu ağdan kimse giriş yapamaz, bu ekrana da ulaşamazsınız.'
+              : 'Bu ağdan yapılan satışlar artık hiçbir şubeye yazılmaz.'}
+          </td>
+          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+            <button type="button" className="mini sil" disabled={mesgul} onClick={() => void sil(k)}>Evet, sil</button>
+            <button type="button" className="mini" disabled={mesgul} onClick={() => setSilOnay(null)}>Vazgeç</button>
+          </td>
+        </tr>
+      );
+    }
+
+    return (
+      <tr key={k.id} style={{ opacity: k.isActive ? 1 : 0.5 }}>
+        <td>
+          {k.label}
+          {ben?.matched?.locationId === k.id && <span className="rozet r-ok" style={{ marginLeft: 8 }}>buradasınız</span>}
+          {!k.isActive && <span className="rozet r-sonuk" style={{ marginLeft: 8 }}>pasif</span>}
+        </td>
+        <td className="mono">{k.cidr}</td>
+        <td className="mono sonuk">
+          {tarih(k.lastSeenAt)}
+          {k.isActive && bayatlik(k.lastSeenAt) && (
+            <div>
+              <span className="rozet r-uyari" title="Sağlayıcı adresi değiştirmiş olabilir — Düzenle ile güncelleyin">
+                {bayatlik(k.lastSeenAt)}
+              </span>
+            </div>
+          )}
+        </td>
+        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+          <button type="button" className="mini" disabled={mesgul} onClick={() => duzenlemeBaslat(k)}>Düzenle</button>
+          <button type="button" className="mini" disabled={mesgul} onClick={() => void degistir(k, { isActive: !k.isActive })}>
+            {k.isActive ? 'Kapat' : 'Aç'}
+          </button>
+          <button type="button" className="mini sil" disabled={mesgul} onClick={() => setSilOnay(k.id)}>Sil</button>
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <>
@@ -279,127 +388,89 @@ export default function Konumlar() {
 
       <section style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--metin-2)', margin: '0 0 10px' }}>
-          Kayıtlı konumlar ({konumlar?.length ?? 0})
+          Şubeler ve ağları ({konumlar?.length ?? 0} kayıt)
         </h2>
+
+        {gruplar.map(({ sube: s, aglar }) => {
+          const acik = !kapaliGrup.includes(s.id);
+          return (
+            <div className="kart" key={s.id} style={{ marginBottom: 10, opacity: s.isActive ? 1 : 0.55 }}>
+              <div
+                className="satir"
+                style={{ cursor: 'pointer', alignItems: 'center' }}
+                onClick={() => setKapaliGrup((k) => (acik ? [...k, s.id] : k.filter((x) => x !== s.id)))}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="sonuk" style={{ width: 10 }}>{acik ? '▾' : '▸'}</span>
+                  <b>{s.name}</b>
+                  <code className="sonuk">{s.code}</code>
+                  {!s.isActive && <span className="rozet r-sonuk">kapalı</span>}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {aglar.length > 0
+                    ? <span className="rozet r-ok">{aglar.length} ağ</span>
+                    : <span className="rozet r-hata">adres bekliyor</span>}
+                  {aglar.length === 0 && ben && !buAdresKayitli && (
+                    <button
+                      type="button"
+                      className="mini"
+                      disabled={mesgul}
+                      title={`Şu an bulunduğunuz ${ben.ip} adresini bu şubeye bağla`}
+                      onClick={(e) => { e.stopPropagation(); void ekle(tekAdres(ben.ip), s.name, s.id); }}
+                    >
+                      Buradaki adresi bağla
+                    </button>
+                  )}
+                </span>
+              </div>
+
+              {acik && aglar.length > 0 && (
+                <div className="tablo-sar" style={{ marginTop: 8 }}>
+                  <table>
+                    <thead><tr><th>Ad</th><th>Adres</th><th>Son görülme</th><th /></tr></thead>
+                    <tbody>{aglar.map(agSatiri)}</tbody>
+                  </table>
+                </div>
+              )}
+              {acik && aglar.length === 0 && (
+                <p className="altbaslik" style={{ fontSize: 12, margin: '6px 0 0' }}>
+                  Bu şubeye bağlı ağ yok — buradan yapılan satış bu şubeye yazılmaz.
+                </p>
+              )}
+            </div>
+          );
+        })}
+
+        {/*
+          Şubesiz kayıtlar ayrı: giriş yetkisi veriyorlar ama satışı bir
+          şubeye yazmıyorlar. Ofis/merkez için doğru, mağaza için sessiz bir
+          arıza — ayrı başlıkta durması bu farkı görünür tutuyor.
+        */}
+        {subesiz.length > 0 && (
+          <div className="kart" style={{ marginBottom: 10 }}>
+            <div className="satir" style={{ alignItems: 'center' }}>
+              <span><b>Merkez / ofis</b> <span className="sonuk">şubesiz</span></span>
+              <span className="rozet r-sonuk">{subesiz.length} ağ</span>
+            </div>
+            <p className="altbaslik" style={{ fontSize: 12, margin: '4px 0 8px' }}>
+              Buradan giriş yapılabiliyor ama satış hiçbir şubeye yazılmıyor.
+            </p>
+            <div className="tablo-sar">
+              <table>
+                <thead><tr><th>Ad</th><th>Adres</th><th>Son görülme</th><th /></tr></thead>
+                <tbody>{subesiz.map(agSatiri)}</tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {konumlar?.length === 0 && (
           <div className="bos">
             Hiç konum tanımlı değil.<br />
             <span className="sonuk">Kapıyı açarsanız kimse giriş yapamaz.</span>
           </div>
         )}
-        {!!konumlar?.length && (
-          <div className="tablo-sar">
-            <table>
-              <thead><tr><th>Ad</th><th>Adres</th><th>Mağaza</th><th>Son görülme</th><th /></tr></thead>
-              <tbody>
-                {konumlar.map((k) => (duzenlenen === k.id ? (
-                  <tr key={k.id}>
-                    <td><input value={dAd} onChange={(e) => setDAd(e.target.value)} style={{ width: '100%' }} /></td>
-                    <td>
-                      <input className="mono" value={dCidr} onChange={(e) => setDCidr(e.target.value)} style={{ width: '100%' }} />
-                      {/*
-                        Asıl işlem bu: mağazadasınız, adres değişmiş, tek tıkla
-                        şu anki adresi alıyorsunuz. Doldurur, kaydetmez —
-                        Kaydet'e basmadan hiçbir şey değişmiyor.
-                      */}
-                      {ben && dCidr !== tekAdres(ben.ip) && (
-                        <button type="button" className="mini" style={{ marginTop: 4 }} onClick={() => setDCidr(tekAdres(ben.ip))}>
-                          şu anki adresi kullan ({ben.ip})
-                        </button>
-                      )}
-                    </td>
-                    <td>
-                      <select value={dSube} onChange={(e) => setDSube(e.target.value)} style={{ width: '100%' }}>
-                        <option value="">Merkez / ofis (şubesiz)</option>
-                        {subeler.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="mono sonuk">{tarih(k.lastSeenAt)}</td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button type="button" className="mini" disabled={mesgul} onClick={() => void duzenlemeKaydet(k)}>Kaydet</button>
-                      <button type="button" className="mini" disabled={mesgul} onClick={() => setDuzenlenen(null)}>Vazgeç</button>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={k.id} style={{ opacity: k.isActive ? 1 : 0.5 }}>
-                    <td>
-                      {k.label}
-                      {ben?.matched?.locationId === k.id && <span className="rozet r-ok" style={{ marginLeft: 8 }}>buradasınız</span>}
-                    </td>
-                    <td className="mono">{k.cidr}</td>
-                    <td>{k.branch ? k.branch.name : <span className="sonuk">merkez / ofis</span>}</td>
-                    <td className="mono sonuk">
-                      {tarih(k.lastSeenAt)}
-                      {k.isActive && bayatlik(k.lastSeenAt) && (
-                        <div>
-                          <span className="rozet r-uyari" title="Sağlayıcı adresi değiştirmiş olabilir — Düzenle ile güncelleyin">
-                            {bayatlik(k.lastSeenAt)}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button type="button" className="mini" disabled={mesgul} onClick={() => duzenlemeBaslat(k)}>Düzenle</button>
-                      <button type="button" className="mini" disabled={mesgul} onClick={() => void degistir(k, { isActive: !k.isActive })}>
-                        {k.isActive ? 'Kapat' : 'Aç'}
-                      </button>
-                      <button type="button" className="mini sil" disabled={mesgul} onClick={() => void sil(k)}>Sil</button>
-                    </td>
-                  </tr>
-                )))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
 
-      {/*
-        Şubeler — Central'da açılanlar burada görünür ve adres bekleyenler
-        işaretlenir. Şube açmak Central'ın işi, adres vermek panelin işi;
-        bu liste ikisi arasındaki devir teslim noktası.
-      */}
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--metin-2)', margin: '0 0 10px' }}>
-          Şubeler ({subeler.length})
-        </h2>
-        {subeler.length === 0 ? (
-          <div className="bos">Şube listesi alınamadı.</div>
-        ) : (
-          <div className="tablo-sar">
-            <table>
-              <thead><tr><th>Şube</th><th>Kod</th><th>Bağlı ağ</th><th /></tr></thead>
-              <tbody>
-                {subeler.map((s) => (
-                  <tr key={s.id} style={{ opacity: s.isActive ? 1 : 0.5 }}>
-                    <td>
-                      {s.name}
-                      {!s.isActive && <span className="rozet r-sonuk" style={{ marginLeft: 8 }}>kapalı</span>}
-                    </td>
-                    <td className="mono sonuk">{s.code}</td>
-                    <td>
-                      {s.konumSayisi > 0
-                        ? <span className="rozet r-ok">{s.konumSayisi} ağ</span>
-                        : <span className="rozet r-hata">adres bekliyor</span>}
-                    </td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {s.konumSayisi === 0 && ben && !buAdresKayitli && (
-                        <button
-                          type="button"
-                          className="mini"
-                          disabled={mesgul}
-                          title={`Şu an bulunduğunuz ${ben.ip} adresini bu şubeye bağla`}
-                          onClick={() => void ekle(tekAdres(ben.ip), s.name, s.id)}
-                        >
-                          Buradaki adresi bağla
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
         <p className="altbaslik" style={{ fontSize: 12, marginTop: 8 }}>
           Ağı olmayan şubede satış o şubeye yazılmaz — kasiyerin hangi mağazada
           olduğu bu adreslerden çözülüyor. Şube açma/kapama Central&apos;da
