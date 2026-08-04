@@ -15,12 +15,19 @@ import { NextRequest } from 'next/server';
 
 const API = process.env.IBERRY_API ?? 'http://localhost:3001';
 
-/** Yalnız bu önekler geçiyor — panel API'nin tamamına açık bir kapı olmasın. */
-const IZINLI = ['dev/', 'auth/', 'locations/'];
+/**
+ * Yalnız bu alanlar geçiyor — panel API'nin tamamına açık bir kapı olmasın.
+ *
+ * İLK SEGMENTE bakılıyor, önek metnine değil. Önce `['dev/', 'auth/',
+ * 'locations/']` diye yazmıştım ve liste ucu (`locations`, eğik çizgisiz)
+ * hiçbir önekle eşleşmediği için reddediliyordu. Segment karşılaştırması
+ * bu tuzağı tamamen kaldırıyor.
+ */
+const IZINLI = new Set(['dev', 'auth', 'locations']);
 
 async function gecir(req: NextRequest, yol: string[]) {
   const path = yol.join('/');
-  if (!IZINLI.some((p) => path.startsWith(p))) {
+  if (!IZINLI.has(yol[0] ?? '')) {
     return Response.json({ error: { message: `Bu yol vekilden geçmiyor: ${path}` } }, { status: 403 });
   }
 
@@ -60,5 +67,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ yol: string
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ yol: string[] }> }) {
+  return gecir(req, (await ctx.params).yol);
+}
+
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ yol: string[] }> }) {
+  return gecir(req, (await ctx.params).yol);
+}
+
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ yol: string[] }> }) {
+  return gecir(req, (await ctx.params).yol);
+}
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ yol: string[] }> }) {
   return gecir(req, (await ctx.params).yol);
 }
