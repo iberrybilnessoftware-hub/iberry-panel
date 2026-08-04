@@ -1,0 +1,9 @@
+# pnpm 11 bağımlılıkların kurulum betiklerini varsayılan olarak engelliyor ve
+# engellediğinde `pnpm install` hata veriyor (ERR_PNPM_IGNORED_BUILDS). Bu liste
+# olmadan temiz bir makinede repo kurulamıyor.
+#
+# `sharp` Next.js'in görsel işleme bağımlılığı; kendi ikili dosyasını kuruyor.
+# Bu panelde görsel optimizasyonu kullanılmıyor ama Next onu bağımlılık olarak
+# getiriyor.
+allowBuilds:
+  sharp: true
