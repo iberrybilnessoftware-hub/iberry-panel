@@ -3,3 +3,9 @@ node_modules
 .env*.local
 next-env.d.ts
 .next-build
+
+# Dağıtım paketi — build çıktısı, depoda tutulmuyor
+paket/
+
+# macOS
+.DS_Store

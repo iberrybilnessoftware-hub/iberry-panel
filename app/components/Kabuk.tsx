@@ -13,6 +13,7 @@ const BOLUMLER = [
   { yol: '/hatalar', ad: 'Hata Akışı', ikon: '⚠' },
   { yol: '/deploy', ad: 'Deploy', ikon: '↑' },
   { yol: '/ayarlar', ad: 'Ayarlar', ikon: '⚙' },
+  { yol: '/entegrasyonlar', ad: 'Entegrasyonlar', ikon: '⚿' },
   { yol: '/denetim', ad: 'Denetim Kayıtları', ikon: '☰' },
   { yol: '/sozluk', ad: 'Hata Sözlüğü', ikon: '⌘' },
 ];

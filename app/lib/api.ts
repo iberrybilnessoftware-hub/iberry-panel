@@ -26,7 +26,11 @@ export async function api<T>(yol: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/proxy/${yol}`, {
     ...opts,
     headers: {
-      'content-type': 'application/json',
+      /* Content-type YALNIZ gövde varken. Koşulsuz gönderildiğinde Fastify
+         gövdesiz POST'u "Body cannot be empty when content-type is set to
+         application/json" diye reddediyor — gövdesi olmayan bir eylem ucu
+         (örn. bağlantı sınama) hiç çalışamıyordu. */
+      ...(opts.body != null ? { 'content-type': 'application/json' } : {}),
       ...(jeton ? { authorization: `Bearer ${jeton}` } : {}),
       ...opts.headers,
     },

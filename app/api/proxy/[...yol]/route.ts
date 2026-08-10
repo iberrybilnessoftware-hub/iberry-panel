@@ -54,7 +54,11 @@ async function gecir(req: NextRequest, yol: string[]) {
     const res = await fetch(url, {
       method: req.method,
       headers: {
-        'content-type': 'application/json',
+        /* Content-type YALNIZ gövde varken. Koşulsuz gönderilince Fastify
+           gövdesiz POST'u "Body cannot be empty when content-type is set to
+           application/json" diye reddediyor; gövdesi olmayan bir eylem ucu
+           (örn. bağlantı sınama) hiç çalışamıyordu. */
+        ...(govde ? { 'content-type': 'application/json' } : {}),
         ...(auth ? { authorization: auth } : {}),
         ...(gercekIp ? { 'x-forwarded-for': gercekIp } : {}),
       },
