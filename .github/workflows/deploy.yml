@@ -75,3 +75,38 @@ jobs:
           done
           echo "✗ panel 200 dönmedi (son kod: $kod)"
           exit 1
+
+      # SONUCU KENDİMİZ BİLDİRİYORUZ — GitHub'a sormuyoruz.
+      #
+      # Panelin deploy ekranı bunu okuyor. GitHub API'sinden çekmek bir okuma
+      # jetonu gerektiriyordu: üretilecek, süresi dolacak, sızabilecek bir
+      # kimlik bilgisi — yalnız "hangi commit ne zaman çıktı" sorusu için.
+      # SSH erişimi zaten var.
+      #
+      # `if: always()` ŞART: asıl öğrenmek istediğimiz başarısız dağıtım.
+      # Yalnız başarılıları yazsaydık ekran her zaman iyi görünürdü.
+      - name: Dağıtım sonucunu bildir
+        if: always()
+        env:
+          # Kabuğa DEĞİŞKENLE giriyor: commit mesajı tırnak ya da `$(...)`
+          # içerebilir ve doğrudan gömmek komut enjeksiyonu demek.
+          MESAJ: ${{ github.event.head_commit.message }}
+          DEPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          KISI: ${{ github.actor }}
+          DURUM: ${{ job.status }}
+          CALISMA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Tek satıra indir: çok satırlı commit mesajı SQL'i bölmesin.
+          MESAJ_TEK=$(printf '%s' "$MESAJ" | tr '\n' ' ' | cut -c1-300)
+          printf '%s\0%s\0%s\0%s\0%s\0%s' "$DEPO" "$SHA" "$MESAJ_TEK" "$KISI" "$DURUM" "$CALISMA" \
+            | ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
+                "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+                'IFS= read -r -d "" DEPO; IFS= read -r -d "" SHA; IFS= read -r -d "" MESAJ;
+                 IFS= read -r -d "" KISI; IFS= read -r -d "" DURUM; IFS= read -r CALISMA;
+                 cd ~/iberry-central-backend/deploy &&
+                 docker compose -f docker-compose.prod.yml exec -T postgres \
+                   psql -U iberry -d iberry -X -q \
+                     -v d="$DEPO" -v s="$SHA" -v m="$MESAJ" -v k="$KISI" -v st="$DURUM" -v u="$CALISMA" \
+                     <<< "INSERT INTO deploy_runs (repo, sha, message, actor, status, run_url) VALUES (:'"'"'d'"'"', :'"'"'s'"'"', :'"'"'m'"'"', :'"'"'k'"'"', :'"'"'st'"'"', :'"'"'u'"'"');"' \
+            || echo "::warning::Dağıtım kaydı yazılamadı (dağıtımın kendisi etkilenmedi)"
