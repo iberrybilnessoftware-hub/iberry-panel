@@ -4,17 +4,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
 /**
- * Deploy takibi — GitHub Actions çalışmaları.
+ * Deploy takibi — iş akışının kendi bildirdiği sonuç.
  *
- * Jeton tarayıcıya inmiyor; merkez API GitHub'a kendisi soruyor.
- * Yapılandırılmamışsa bu bir hata değil, eksik bir kurulum — öyle de
- * gösteriliyor.
+ * ÖNCE GITHUB API'SİNDEN OKUNUYORDU ve bu bir okuma jetonu gerektiriyordu:
+ * üretilecek, saklanacak, süresi dolacak, sızabilecek bir kimlik bilgisi —
+ * yalnız "hangi commit ne zaman çıktı" sorusu için. İş akışının sunucuya SSH
+ * erişimi zaten vardı; artık sonucu kendisi yazıyor.
+ *
+ * TABLO DARALDI: iş akışı adı, dal ve süre artık YOK. Uydurmak yerine
+ * kaldırdık — elimizde olmayan bilgiyi göstermek, yanlış bilgi göstermektir.
  */
 
 interface Calisma {
-  id: number; ad: string; dal: string; commit: string; commitMesaji: string;
-  durum: string; sonuc: string | null; basladi: string; bitti: string | null;
-  sureSn: number | null; yazar: string | null; url: string;
+  sha: string;
+  kisaSha: string;
+  mesaj: string | null;
+  kisi: string | null;
+  durum: string;
+  basarili: boolean;
+  url: string | null;
+  zaman: string;
 }
 
 interface Cevap {
@@ -26,13 +35,10 @@ interface Cevap {
 const zaman = (iso: string) =>
   new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-const sure = (sn: number | null) => (sn === null ? '—' : sn < 60 ? `${sn} sn` : `${Math.floor(sn / 60)} dk ${sn % 60} sn`);
-
 function Durum({ c }: { c: Calisma }) {
-  if (c.durum !== 'completed') return <span className="rozet r-uyari">{c.durum === 'in_progress' ? 'çalışıyor' : 'sırada'}</span>;
-  if (c.sonuc === 'success') return <span className="rozet r-ok">başarılı</span>;
-  if (c.sonuc === 'cancelled') return <span className="rozet r-sonuk">iptal</span>;
-  return <span className="rozet r-hata">{c.sonuc ?? 'hata'}</span>;
+  if (c.basarili) return <span className="rozet r-ok">başarılı</span>;
+  if (c.durum === 'cancelled') return <span className="rozet r-sonuk">iptal</span>;
+  return <span className="rozet r-hata">{c.durum}</span>;
 }
 
 const TAZELE_MS = 20_000;
@@ -76,28 +82,26 @@ export default function Deploy() {
             {r.depo}
           </h2>
           {r.calismalar.length === 0 ? (
-            <div className="bos">Çalışma bulunamadı ya da depoya erişilemedi.</div>
+            <div className="bos">Bu depoda henüz dağıtım kaydı yok.</div>
           ) : (
             <div className="tablo-sar">
               <table>
                 <thead>
-                  <tr><th>Durum</th><th>İş akışı</th><th>Commit</th><th>Dal</th><th>Başladı</th><th>Süre</th><th /></tr>
+                  <tr><th>Durum</th><th>Commit</th><th>Kim</th><th>Ne zaman</th><th /></tr>
                 </thead>
                 <tbody>
                   {r.calismalar.map((c) => (
-                    <tr key={c.id}>
+                    <tr key={c.sha + c.zaman}>
                       <td><Durum c={c} /></td>
-                      <td>{c.ad}</td>
                       <td>
-                        <span className="mono">{c.commit}</span>
-                        <div className="sonuk" style={{ fontSize: 11, maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.commitMesaji}
+                        <span className="mono">{c.kisaSha}</span>
+                        <div className="sonuk" style={{ fontSize: 11, maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.mesaj ?? '—'}
                         </div>
                       </td>
-                      <td className="mono sonuk">{c.dal}</td>
-                      <td className="mono">{zaman(c.basladi)}</td>
-                      <td className="sonuk">{sure(c.sureSn)}</td>
-                      <td><a href={c.url} target="_blank" rel="noreferrer">aç ↗</a></td>
+                      <td className="sonuk">{c.kisi ?? '—'}</td>
+                      <td className="mono">{zaman(c.zaman)}</td>
+                      <td>{c.url ? <a href={c.url} target="_blank" rel="noreferrer">aç ↗</a> : null}</td>
                     </tr>
                   ))}
                 </tbody>
