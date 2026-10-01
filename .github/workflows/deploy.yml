@@ -69,7 +69,7 @@ jobs:
         # durum; sonuna gerçek bir istek atıyoruz.
         run: |
           for i in $(seq 1 10); do
-            kod=$(curl -s -o /dev/null -w '%{http_code}' https://panel.furkantandogan.com/ || true)
+            kod=$(curl -s -o /dev/null -w '%{http_code}' https://panel.iberry.com.tr/ || true)
             [ "$kod" = "200" ] && echo "✓ panel ayakta" && exit 0
             sleep 5
           done
