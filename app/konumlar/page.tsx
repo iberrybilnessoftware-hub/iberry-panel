@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { useCallback, useEffect, useState } from "react";
+import { api } from "../lib/api";
 
 /**
  * Konumlar + Wi-Fi kapısı.
@@ -15,23 +15,42 @@ import { api } from '../lib/api';
  */
 
 interface Konum {
-  id: string; label: string; cidr: string; branchId: string | null;
-  isActive: boolean; lastSeenAt: string | null;
+  id: string;
+  label: string;
+  cidr: string;
+  branchId: string | null;
+  isActive: boolean;
+  lastSeenAt: string | null;
   branch: { id: string; code: string; name: string } | null;
 }
 
 interface Neredeyim {
   ip: string;
-  enforcement: 'on' | 'off';
-  matched: { locationId: string; label: string; branchId: string | null } | null;
+  enforcement: "on" | "off";
+  matched: {
+    locationId: string;
+    label: string;
+    branchId: string | null;
+  } | null;
 }
 
-interface Sube { id: string; code: string; name: string; isActive: boolean; konumSayisi: number }
-
-interface Ayar { anahtar: string; deger: string; kaynak: string }
+interface Sube {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  konumSayisi: number;
+}
 
 const tarih = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  iso
+    ? new Date(iso).toLocaleString("tr-TR", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
 
 /**
  * Tek bir adresi kapsayan blok.
@@ -41,7 +60,7 @@ const tarih = (iso: string | null) =>
  * eşleşen KOCAMAN bir blok demek. Yerelde `::1/32` diye kaydedilmiş bir
  * satır bu yüzden oluştu. IPv4'te tek host /32, IPv6'da /128.
  */
-const tekAdres = (ip: string) => `${ip}/${ip.includes(':') ? 128 : 32}`;
+const tekAdres = (ip: string) => `${ip}/${ip.includes(":") ? 128 : 32}`;
 
 /** Bu kadar süre görülmeyen kayıt için adres değişmiş uyarısı çıkıyor. */
 const BAYAT_GUN = 7;
@@ -55,7 +74,7 @@ const BAYAT_GUN = 7;
  * `lastSeenAt` bunu görünür kılan tek işaret.
  */
 function bayatlik(iso: string | null): string | null {
-  if (!iso) return 'hiç görülmedi';
+  if (!iso) return "hiç görülmedi";
   const gun = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   return gun >= BAYAT_GUN ? `${gun} gündür görülmedi` : null;
 }
@@ -67,10 +86,10 @@ export default function Konumlar() {
   const [hata, setHata] = useState<string | null>(null);
   const [mesgul, setMesgul] = useState(false);
 
-  const [etiket, setEtiket] = useState('');
-  const [cidr, setCidr] = useState('');
-  const [sube, setSube] = useState('');
-  const [hizliSube, setHizliSube] = useState('');
+  const [etiket, setEtiket] = useState("");
+  const [cidr, setCidr] = useState("");
+  const [sube, setSube] = useState("");
+  const [hizliSube, setHizliSube] = useState("");
 
   /*
    * Satır içi düzenleme.
@@ -81,9 +100,9 @@ export default function Konumlar() {
    * yanlış adres yazılırsa da geri dönülemiyor.
    */
   const [duzenlenen, setDuzenlenen] = useState<string | null>(null);
-  const [dAd, setDAd] = useState('');
-  const [dCidr, setDCidr] = useState('');
-  const [dSube, setDSube] = useState('');
+  const [dAd, setDAd] = useState("");
+  const [dCidr, setDCidr] = useState("");
+  const [dSube, setDSube] = useState("");
   /** Silme onayı bekleyen satır — iki adımlı, yanlışlıkla silinmesin. */
   const [silOnay, setSilOnay] = useState<string | null>(null);
   /** Kapalı tutulan şube grupları; varsayılan AÇIK, ağları görmek asıl iş. */
@@ -93,7 +112,7 @@ export default function Konumlar() {
     setDuzenlenen(k.id);
     setDAd(k.label);
     setDCidr(k.cidr);
-    setDSube(k.branchId ?? '');
+    setDSube(k.branchId ?? "");
     setHata(null);
   };
 
@@ -114,60 +133,105 @@ export default function Konumlar() {
   const yukle = useCallback(async () => {
     try {
       const [k, b, s] = await Promise.all([
-        api<Konum[]>('locations'),
-        api<Neredeyim>('locations/whoami'),
-        api<Sube[]>('dev/branches'),
+        api<Konum[]>("locations"),
+        api<Neredeyim>("locations/whoami"),
+        api<Sube[]>("dev/branches"),
       ]);
-      setKonumlar(k); setBen(b); setSubeler(s); setHata(null);
-    } catch (e) { setHata(e instanceof Error ? e.message : 'Alınamadı'); }
+      setKonumlar(k);
+      setBen(b);
+      setSubeler(s);
+      setHata(null);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Alınamadı");
+    }
   }, []);
 
-  useEffect(() => { void yukle(); }, [yukle]);
+  useEffect(() => {
+    void yukle();
+  }, [yukle]);
 
-  const kapiDegistir = async (yeni: 'on' | 'off') => {
+  const kapiDegistir = async (yeni: "on" | "off") => {
     // KİLİTLENME KORUMASI: kapıyı açarken şu anki adres eşleşmiyorsa, bu
     // ekrana bir daha ulaşamazsınız. Sunucuya girip ortam değişkeni
     // kapatmaktan başka yol kalmaz.
-    if (yeni === 'on' && !ben?.matched) {
-      if (!confirm(
-        `DİKKAT: şu an bulunduğunuz adres (${ben?.ip}) hiçbir konumla eşleşmiyor.\n\n`
-        + 'Kapıyı açarsanız bu ağdan kimse giriş yapamaz ve bu ekrana ulaşamazsınız.\n'
-        + 'Kurtarmak için sunucuda LOCATION_ENFORCEMENT=off yapmak gerekir.\n\n'
-        + 'Yine de açılsın mı?',
-      )) return;
+    if (yeni === "on" && !ben?.matched) {
+      if (
+        !confirm(
+          `DİKKAT: şu an bulunduğunuz adres (${ben?.ip}) hiçbir konumla eşleşmiyor.\n\n` +
+            "Kapıyı açarsanız bu ağdan kimse giriş yapamaz ve bu ekrana ulaşamazsınız.\n" +
+            "Kurtarmak için sunucuda LOCATION_ENFORCEMENT=off yapmak gerekir.\n\n" +
+            "Yine de açılsın mı?",
+        )
+      )
+        return;
     }
     setMesgul(true);
     try {
-      await api('dev/settings/LOCATION_ENFORCEMENT', { method: 'PUT', body: JSON.stringify({ value: yeni }) });
+      await api("dev/settings/LOCATION_ENFORCEMENT", {
+        method: "PUT",
+        body: JSON.stringify({ value: yeni }),
+      });
       // Ayar 15 sn önbellekli; hemen sorarsak eski değeri görürüz.
       setTimeout(() => void yukle(), 1200);
       setBen((b) => (b ? { ...b, enforcement: yeni } : b));
-    } catch (e) { setHata(e instanceof Error ? e.message : 'Değiştirilemedi'); }
-    finally { setMesgul(false); }
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Değiştirilemedi");
+    } finally {
+      setMesgul(false);
+    }
   };
 
   const ekle = async (adres: string, ad: string, subeId: string) => {
-    if (!adres.trim() || !ad.trim()) { setHata('Ad ve adres zorunlu'); return; }
+    if (!adres.trim() || !ad.trim()) {
+      setHata("Ad ve adres zorunlu");
+      return;
+    }
     setMesgul(true);
     try {
-      await api('locations', {
-        method: 'POST',
-        body: JSON.stringify({ label: ad.trim(), cidr: adres.trim(), branchId: subeId || null }),
+      await api("locations", {
+        method: "POST",
+        body: JSON.stringify({
+          label: ad.trim(),
+          cidr: adres.trim(),
+          branchId: subeId || null,
+        }),
       });
-      setEtiket(''); setCidr(''); setSube('');
+      setEtiket("");
+      setCidr("");
+      setSube("");
       await yukle();
-    } catch (e) { setHata(e instanceof Error ? e.message : 'Eklenemedi'); }
-    finally { setMesgul(false); }
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Eklenemedi");
+    } finally {
+      setMesgul(false);
+    }
   };
 
   const degistir = async (k: Konum, alan: Partial<Konum>) => {
-    if (ben?.matched?.locationId === k.id && ben.enforcement === 'on' && alan.isActive === false) {
-      if (!confirm(`"${k.label}" şu an SİZİN bağlandığınız kayıt ve kapı açık.\nKapatırsanız bu ağdan kimse giriş yapamaz.\n\nYine de kapatılsın mı?`)) return;
+    if (
+      ben?.matched?.locationId === k.id &&
+      ben.enforcement === "on" &&
+      alan.isActive === false
+    ) {
+      if (
+        !confirm(
+          `"${k.label}" şu an SİZİN bağlandığınız kayıt ve kapı açık.\nKapatırsanız bu ağdan kimse giriş yapamaz.\n\nYine de kapatılsın mı?`,
+        )
+      )
+        return;
     }
     setMesgul(true);
-    try { await api(`locations/${k.id}`, { method: 'PATCH', body: JSON.stringify(alan) }); await yukle(); }
-    catch (e) { setHata(e instanceof Error ? e.message : 'Güncellenemedi'); }
-    finally { setMesgul(false); }
+    try {
+      await api(`locations/${k.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(alan),
+      });
+      await yukle();
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Güncellenemedi");
+    } finally {
+      setMesgul(false);
+    }
   };
 
   /**
@@ -182,26 +246,43 @@ export default function Konumlar() {
   const duzenlemeKaydet = async (k: Konum) => {
     const yeniCidr = dCidr.trim();
     const yeniAd = dAd.trim();
-    if (!yeniAd || !yeniCidr) { setHata('Ad ve adres boş olamaz'); return; }
+    if (!yeniAd || !yeniCidr) {
+      setHata("Ad ve adres boş olamaz");
+      return;
+    }
 
-    if (ben?.matched?.locationId === k.id && ben.enforcement === 'on' && yeniCidr !== k.cidr) {
-      if (!confirm(
-        `"${k.label}" şu an SİZİN bağlandığınız kayıt ve kapı açık.\n\n`
-        + `Adres ${k.cidr} → ${yeniCidr} olarak değişecek. Yeni adres sizi kapsamıyorsa `
-        + 'bu ağdan kimse giriş yapamaz ve bu ekrana ulaşamazsınız.\n\nDevam edilsin mi?',
-      )) return;
+    if (
+      ben?.matched?.locationId === k.id &&
+      ben.enforcement === "on" &&
+      yeniCidr !== k.cidr
+    ) {
+      if (
+        !confirm(
+          `"${k.label}" şu an SİZİN bağlandığınız kayıt ve kapı açık.\n\n` +
+            `Adres ${k.cidr} → ${yeniCidr} olarak değişecek. Yeni adres sizi kapsamıyorsa ` +
+            "bu ağdan kimse giriş yapamaz ve bu ekrana ulaşamazsınız.\n\nDevam edilsin mi?",
+        )
+      )
+        return;
     }
 
     setMesgul(true);
     try {
       await api(`locations/${k.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ label: yeniAd, cidr: yeniCidr, branchId: dSube || null }),
+        method: "PATCH",
+        body: JSON.stringify({
+          label: yeniAd,
+          cidr: yeniCidr,
+          branchId: dSube || null,
+        }),
       });
       setDuzenlenen(null);
       await yukle();
-    } catch (e) { setHata(e instanceof Error ? e.message : 'Güncellenemedi'); }
-    finally { setMesgul(false); }
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Güncellenemedi");
+    } finally {
+      setMesgul(false);
+    }
   };
 
   /*
@@ -214,14 +295,19 @@ export default function Konumlar() {
   const sil = async (k: Konum) => {
     setMesgul(true);
     try {
-      await api(`locations/${k.id}`, { method: 'DELETE' });
+      await api(`locations/${k.id}`, { method: "DELETE" });
       setSilOnay(null);
       await yukle();
-    } catch (e) { setHata(e instanceof Error ? e.message : 'Silinemedi'); }
-    finally { setMesgul(false); }
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Silinemedi");
+    } finally {
+      setMesgul(false);
+    }
   };
 
-  const buAdresKayitli = konumlar?.some((k) => k.cidr === tekAdres(ben?.ip ?? '') || k.cidr === ben?.ip);
+  const buAdresKayitli = konumlar?.some(
+    (k) => k.cidr === tekAdres(ben?.ip ?? "") || k.cidr === ben?.ip,
+  );
 
   /*
    * Ağlar ŞUBE ALTINDA gruplanıyor.
@@ -245,30 +331,68 @@ export default function Konumlar() {
     if (duzenlenen === k.id) {
       return (
         <tr key={k.id}>
-          <td><input value={dAd} onChange={(e) => setDAd(e.target.value)} style={{ width: '100%' }} /></td>
           <td>
-            <input className="mono" value={dCidr} onChange={(e) => setDCidr(e.target.value)} style={{ width: '100%' }} />
+            <input
+              value={dAd}
+              onChange={(e) => setDAd(e.target.value)}
+              style={{ width: "100%" }}
+            />
+          </td>
+          <td>
+            <input
+              className="mono"
+              value={dCidr}
+              onChange={(e) => setDCidr(e.target.value)}
+              style={{ width: "100%" }}
+            />
             {/*
               Asıl işlem bu: mağazadasınız, adres değişmiş, tek tıkla şu anki
               adresi alıyorsunuz. Doldurur, kaydetmez — Kaydet'e basmadan
               hiçbir şey değişmiyor.
             */}
             {ben && dCidr !== tekAdres(ben.ip) && (
-              <button type="button" className="mini" style={{ marginTop: 4 }} onClick={() => setDCidr(tekAdres(ben.ip))}>
+              <button
+                type="button"
+                className="mini"
+                style={{ marginTop: 4 }}
+                onClick={() => setDCidr(tekAdres(ben.ip))}
+              >
                 şu anki adresi kullan ({ben.ip})
               </button>
             )}
             {/* Şube de buradan değişebiliyor: bir ağı başka mağazaya taşımak
                 ayrı bir ekran gerektirmesin. */}
-            <select value={dSube} onChange={(e) => setDSube(e.target.value)} style={{ width: '100%', marginTop: 4 }}>
+            <select
+              value={dSube}
+              onChange={(e) => setDSube(e.target.value)}
+              style={{ width: "100%", marginTop: 4 }}
+            >
               <option value="">Merkez / ofis (şubesiz)</option>
-              {subeler.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {subeler.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
             </select>
           </td>
           <td className="mono sonuk">{tarih(k.lastSeenAt)}</td>
-          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-            <button type="button" className="mini" disabled={mesgul} onClick={() => void duzenlemeKaydet(k)}>Kaydet</button>
-            <button type="button" className="mini" disabled={mesgul} onClick={() => setDuzenlenen(null)}>Vazgeç</button>
+          <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+            <button
+              type="button"
+              className="mini"
+              disabled={mesgul}
+              onClick={() => void duzenlemeKaydet(k)}
+            >
+              Kaydet
+            </button>
+            <button
+              type="button"
+              className="mini"
+              disabled={mesgul}
+              onClick={() => setDuzenlenen(null)}
+            >
+              Vazgeç
+            </button>
           </td>
         </tr>
       );
@@ -276,18 +400,33 @@ export default function Konumlar() {
 
     if (silOnay === k.id) {
       // Kayıt zaten gözünüzün önünde; burada yalnız SONUCU söylüyoruz.
-      const kendimiz = ben?.matched?.locationId === k.id && ben.enforcement === 'on';
+      const kendimiz =
+        ben?.matched?.locationId === k.id && ben.enforcement === "on";
       return (
         <tr key={k.id}>
-          <td colSpan={3} style={{ color: 'var(--hata)' }}>
-            <b>{k.label}</b> ({k.cidr}) silinsin mi?{' '}
+          <td colSpan={3} style={{ color: "var(--hata)" }}>
+            <b>{k.label}</b> ({k.cidr}) silinsin mi?{" "}
             {kendimiz
-              ? 'ŞU AN bu kayıt üzerinden bağlısınız ve kapı açık — silerseniz bu ağdan kimse giriş yapamaz, bu ekrana da ulaşamazsınız.'
-              : 'Bu ağdan yapılan satışlar artık hiçbir şubeye yazılmaz.'}
+              ? "ŞU AN bu kayıt üzerinden bağlısınız ve kapı açık — silerseniz bu ağdan kimse giriş yapamaz, bu ekrana da ulaşamazsınız."
+              : "Bu ağdan yapılan satışlar artık hiçbir şubeye yazılmaz."}
           </td>
-          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-            <button type="button" className="mini sil" disabled={mesgul} onClick={() => void sil(k)}>Evet, sil</button>
-            <button type="button" className="mini" disabled={mesgul} onClick={() => setSilOnay(null)}>Vazgeç</button>
+          <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+            <button
+              type="button"
+              className="mini sil"
+              disabled={mesgul}
+              onClick={() => void sil(k)}
+            >
+              Evet, sil
+            </button>
+            <button
+              type="button"
+              className="mini"
+              disabled={mesgul}
+              onClick={() => setSilOnay(null)}
+            >
+              Vazgeç
+            </button>
           </td>
         </tr>
       );
@@ -297,26 +436,56 @@ export default function Konumlar() {
       <tr key={k.id} style={{ opacity: k.isActive ? 1 : 0.5 }}>
         <td>
           {k.label}
-          {ben?.matched?.locationId === k.id && <span className="rozet r-ok" style={{ marginLeft: 8 }}>buradasınız</span>}
-          {!k.isActive && <span className="rozet r-sonuk" style={{ marginLeft: 8 }}>pasif</span>}
+          {ben?.matched?.locationId === k.id && (
+            <span className="rozet r-ok" style={{ marginLeft: 8 }}>
+              buradasınız
+            </span>
+          )}
+          {!k.isActive && (
+            <span className="rozet r-sonuk" style={{ marginLeft: 8 }}>
+              pasif
+            </span>
+          )}
         </td>
         <td className="mono">{k.cidr}</td>
         <td className="mono sonuk">
           {tarih(k.lastSeenAt)}
           {k.isActive && bayatlik(k.lastSeenAt) && (
             <div>
-              <span className="rozet r-uyari" title="Sağlayıcı adresi değiştirmiş olabilir — Düzenle ile güncelleyin">
+              <span
+                className="rozet r-uyari"
+                title="Sağlayıcı adresi değiştirmiş olabilir — Düzenle ile güncelleyin"
+              >
                 {bayatlik(k.lastSeenAt)}
               </span>
             </div>
           )}
         </td>
-        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-          <button type="button" className="mini" disabled={mesgul} onClick={() => duzenlemeBaslat(k)}>Düzenle</button>
-          <button type="button" className="mini" disabled={mesgul} onClick={() => void degistir(k, { isActive: !k.isActive })}>
-            {k.isActive ? 'Kapat' : 'Aç'}
+        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+          <button
+            type="button"
+            className="mini"
+            disabled={mesgul}
+            onClick={() => duzenlemeBaslat(k)}
+          >
+            Düzenle
           </button>
-          <button type="button" className="mini sil" disabled={mesgul} onClick={() => setSilOnay(k.id)}>Sil</button>
+          <button
+            type="button"
+            className="mini"
+            disabled={mesgul}
+            onClick={() => void degistir(k, { isActive: !k.isActive })}
+          >
+            {k.isActive ? "Kapat" : "Aç"}
+          </button>
+          <button
+            type="button"
+            className="mini sil"
+            disabled={mesgul}
+            onClick={() => setSilOnay(k.id)}
+          >
+            Sil
+          </button>
         </td>
       </tr>
     );
@@ -325,7 +494,9 @@ export default function Konumlar() {
   return (
     <>
       <h1>Konumlar</h1>
-      <p className="altbaslik">Hangi ağdan bağlanan hangi mağazada sayılıyor — ve Wi-Fi kapısı.</p>
+      <p className="altbaslik">
+        Hangi ağdan bağlanan hangi mağazada sayılıyor — ve Wi-Fi kapısı.
+      </p>
 
       {hata && <div className="hata-kutu">{hata}</div>}
 
@@ -335,32 +506,55 @@ export default function Konumlar() {
           <div className="satir">
             <span>Durum</span>
             <span>
-              {ben.enforcement === 'on'
-                ? <span className="rozet r-ok">AÇIK — tanınmayan ağdan giriş yok</span>
-                : <span className="rozet r-sonuk">KAPALI — engelleme yok, yalnız şube belirleniyor</span>}
+              {ben.enforcement === "on" ? (
+                <span className="rozet r-ok">
+                  AÇIK — tanınmayan ağdan giriş yok
+                </span>
+              ) : (
+                <span className="rozet r-sonuk">
+                  KAPALI — engelleme yok, yalnız şube belirleniyor
+                </span>
+              )}
             </span>
           </div>
           <div className="satir">
             <span>Sizi şu adresten görüyorum</span>
             <span>
-              <code>{ben.ip}</code>{' '}
-              {ben.matched
-                ? <span className="rozet r-ok">{ben.matched.label}</span>
-                : <span className="rozet r-hata">kayıtlı değil</span>}
+              <code>{ben.ip}</code>{" "}
+              {ben.matched ? (
+                <span className="rozet r-ok">{ben.matched.label}</span>
+              ) : (
+                <span className="rozet r-hata">kayıtlı değil</span>
+              )}
             </span>
           </div>
-          <div className="arac" style={{ margin: '12px 0 0' }}>
-            <button type="button" disabled={mesgul || ben.enforcement === 'on'} onClick={() => void kapiDegistir('on')}>
+          <div className="arac" style={{ margin: "12px 0 0" }}>
+            <button
+              type="button"
+              disabled={mesgul || ben.enforcement === "on"}
+              onClick={() => void kapiDegistir("on")}
+            >
               Kapıyı aç (engellemeyi başlat)
             </button>
-            <button type="button" disabled={mesgul || ben.enforcement === 'off'} onClick={() => void kapiDegistir('off')}>
+            <button
+              type="button"
+              disabled={mesgul || ben.enforcement === "off"}
+              onClick={() => void kapiDegistir("off")}
+            >
               Kapıyı kapat
             </button>
           </div>
-          {ben.enforcement === 'off' && (
-            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--metin-2)' }}>
-              Kapı kapalıyken konum kayıtları yine de çalışıyor: hangi mağazada olduğunuzu,
-              dolayısıyla satışın hangi stoktan düşeceğini belirliyorlar. Kapatmak yalnız
+          {ben.enforcement === "off" && (
+            <p
+              style={{
+                margin: "10px 0 0",
+                fontSize: 12,
+                color: "var(--metin-2)",
+              }}
+            >
+              Kapı kapalıyken konum kayıtları yine de çalışıyor: hangi mağazada
+              olduğunuzu, dolayısıyla satışın hangi stoktan düşeceğini
+              belirliyorlar. Kapatmak yalnız
               <b> giriş engellemesini</b> kaldırıyor.
             </p>
           )}
@@ -369,16 +563,30 @@ export default function Konumlar() {
 
       {ben && !buAdresKayitli && (
         <div className="uyari-kutu">
-          <b>Bu adresi kaydet</b> — bulunduğunuz ağı bir mağazaya bağlayın. IP yazmanıza gerek yok.
-          <div className="arac" style={{ margin: '10px 0 0' }}>
-            <select value={hizliSube} onChange={(e) => setHizliSube(e.target.value)}>
+          <b>Bu adresi kaydet</b> — bulunduğunuz ağı bir mağazaya bağlayın. IP
+          yazmanıza gerek yok.
+          <div className="arac" style={{ margin: "10px 0 0" }}>
+            <select
+              value={hizliSube}
+              onChange={(e) => setHizliSube(e.target.value)}
+            >
               <option value="">Merkez / ofis (şubesiz)</option>
-              {subeler.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {subeler.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
             </select>
             <button
               type="button"
               disabled={mesgul}
-              onClick={() => void ekle(tekAdres(ben.ip), subeler.find((s) => s.id === hizliSube)?.name ?? 'Ofis', hizliSube)}
+              onClick={() =>
+                void ekle(
+                  tekAdres(ben.ip),
+                  subeler.find((s) => s.id === hizliSube)?.name ?? "Ofis",
+                  hizliSube,
+                )
+              }
             >
               {ben.ip} adresini ekle
             </button>
@@ -387,36 +595,59 @@ export default function Konumlar() {
       )}
 
       <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--metin-2)', margin: '0 0 10px' }}>
+        <h2
+          style={{
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: "0.07em",
+            color: "var(--metin-2)",
+            margin: "0 0 10px",
+          }}
+        >
           Şubeler ve ağları ({konumlar?.length ?? 0} kayıt)
         </h2>
 
         {gruplar.map(({ sube: s, aglar }) => {
           const acik = !kapaliGrup.includes(s.id);
           return (
-            <div className="kart" key={s.id} style={{ marginBottom: 10, opacity: s.isActive ? 1 : 0.55 }}>
+            <div
+              className="kart"
+              key={s.id}
+              style={{ marginBottom: 10, opacity: s.isActive ? 1 : 0.55 }}
+            >
               <div
                 className="satir"
-                style={{ cursor: 'pointer', alignItems: 'center' }}
-                onClick={() => setKapaliGrup((k) => (acik ? [...k, s.id] : k.filter((x) => x !== s.id)))}
+                style={{ cursor: "pointer", alignItems: "center" }}
+                onClick={() =>
+                  setKapaliGrup((k) =>
+                    acik ? [...k, s.id] : k.filter((x) => x !== s.id),
+                  )
+                }
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="sonuk" style={{ width: 10 }}>{acik ? '▾' : '▸'}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="sonuk" style={{ width: 10 }}>
+                    {acik ? "▾" : "▸"}
+                  </span>
                   <b>{s.name}</b>
                   <code className="sonuk">{s.code}</code>
                   {!s.isActive && <span className="rozet r-sonuk">kapalı</span>}
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {aglar.length > 0
-                    ? <span className="rozet r-ok">{aglar.length} ağ</span>
-                    : <span className="rozet r-hata">adres bekliyor</span>}
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {aglar.length > 0 ? (
+                    <span className="rozet r-ok">{aglar.length} ağ</span>
+                  ) : (
+                    <span className="rozet r-hata">adres bekliyor</span>
+                  )}
                   {aglar.length === 0 && ben && !buAdresKayitli && (
                     <button
                       type="button"
                       className="mini"
                       disabled={mesgul}
                       title={`Şu an bulunduğunuz ${ben.ip} adresini bu şubeye bağla`}
-                      onClick={(e) => { e.stopPropagation(); void ekle(tekAdres(ben.ip), s.name, s.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void ekle(tekAdres(ben.ip), s.name, s.id);
+                      }}
                     >
                       Buradaki adresi bağla
                     </button>
@@ -427,14 +658,25 @@ export default function Konumlar() {
               {acik && aglar.length > 0 && (
                 <div className="tablo-sar" style={{ marginTop: 8 }}>
                   <table>
-                    <thead><tr><th>Ad</th><th>Adres</th><th>Son görülme</th><th /></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>Ad</th>
+                        <th>Adres</th>
+                        <th>Son görülme</th>
+                        <th />
+                      </tr>
+                    </thead>
                     <tbody>{aglar.map(agSatiri)}</tbody>
                   </table>
                 </div>
               )}
               {acik && aglar.length === 0 && (
-                <p className="altbaslik" style={{ fontSize: 12, margin: '6px 0 0' }}>
-                  Bu şubeye bağlı ağ yok — buradan yapılan satış bu şubeye yazılmaz.
+                <p
+                  className="altbaslik"
+                  style={{ fontSize: 12, margin: "6px 0 0" }}
+                >
+                  Bu şubeye bağlı ağ yok — buradan yapılan satış bu şubeye
+                  yazılmaz.
                 </p>
               )}
             </div>
@@ -448,16 +690,28 @@ export default function Konumlar() {
         */}
         {subesiz.length > 0 && (
           <div className="kart" style={{ marginBottom: 10 }}>
-            <div className="satir" style={{ alignItems: 'center' }}>
-              <span><b>Merkez / ofis</b> <span className="sonuk">şubesiz</span></span>
+            <div className="satir" style={{ alignItems: "center" }}>
+              <span>
+                <b>Merkez / ofis</b> <span className="sonuk">şubesiz</span>
+              </span>
               <span className="rozet r-sonuk">{subesiz.length} ağ</span>
             </div>
-            <p className="altbaslik" style={{ fontSize: 12, margin: '4px 0 8px' }}>
+            <p
+              className="altbaslik"
+              style={{ fontSize: 12, margin: "4px 0 8px" }}
+            >
               Buradan giriş yapılabiliyor ama satış hiçbir şubeye yazılmıyor.
             </p>
             <div className="tablo-sar">
               <table>
-                <thead><tr><th>Ad</th><th>Adres</th><th>Son görülme</th><th /></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Ad</th>
+                    <th>Adres</th>
+                    <th>Son görülme</th>
+                    <th />
+                  </tr>
+                </thead>
                 <tbody>{subesiz.map(agSatiri)}</tbody>
               </table>
             </div>
@@ -466,7 +720,8 @@ export default function Konumlar() {
 
         {konumlar?.length === 0 && (
           <div className="bos">
-            Hiç konum tanımlı değil.<br />
+            Hiç konum tanımlı değil.
+            <br />
             <span className="sonuk">Kapıyı açarsanız kimse giriş yapamaz.</span>
           </div>
         )}
@@ -479,27 +734,55 @@ export default function Konumlar() {
       </section>
 
       <section>
-        <h2 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--metin-2)', margin: '0 0 10px' }}>
+        <h2
+          style={{
+            fontSize: 12,
+            textTransform: "uppercase",
+            letterSpacing: "0.07em",
+            color: "var(--metin-2)",
+            margin: "0 0 10px",
+          }}
+        >
           Elle ekle
         </h2>
         <p className="altbaslik" style={{ fontSize: 12.5 }}>
-          Tek adres için <code>88.230.14.7</code>, blok için <code>88.230.14.0/24</code>.
-          Sistem mağazanın <b>dış</b> adresine bakıyor — <code>192.168.x.x</code> yazmanın faydası yok,
-          o adres her mağazada aynı.
+          Tek adres için <code>88.230.14.7</code>, blok için{" "}
+          <code>88.230.14.0/24</code>. Sistem mağazanın <b>dış</b> adresine
+          bakıyor — <code>192.168.x.x</code> yazmanın faydası yok, o adres her
+          mağazada aynı.
         </p>
         <div className="arac">
-          <input placeholder="Ad — örn. Ümraniye" value={etiket} onChange={(e) => setEtiket(e.target.value)} />
-          <input placeholder="Adres ya da blok" value={cidr} onChange={(e) => setCidr(e.target.value)} />
+          <input
+            placeholder="Ad — örn. Ümraniye"
+            value={etiket}
+            onChange={(e) => setEtiket(e.target.value)}
+          />
+          <input
+            placeholder="Adres ya da blok"
+            value={cidr}
+            onChange={(e) => setCidr(e.target.value)}
+          />
           <select value={sube} onChange={(e) => setSube(e.target.value)}>
             <option value="">Merkez / ofis (şubesiz)</option>
-            {subeler.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {subeler.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
-          <button type="button" disabled={mesgul} onClick={() => void ekle(cidr, etiket, sube)}>Ekle</button>
+          <button
+            type="button"
+            disabled={mesgul}
+            onClick={() => void ekle(cidr, etiket, sube)}
+          >
+            Ekle
+          </button>
         </div>
       </section>
 
       <p className="altbaslik" style={{ marginTop: 20, fontSize: 12 }}>
-        Değişiklikler ~30 saniye içinde geçerli oluyor — sunucu konum listesini kısa süre önbellekliyor.
+        Değişiklikler ~30 saniye içinde geçerli oluyor — sunucu konum listesini
+        kısa süre önbellekliyor.
       </p>
     </>
   );

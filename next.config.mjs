@@ -9,7 +9,7 @@ const nextConfig = {
    * konsolu gibi dosya kopyalayıp bırakamıyoruz, çalışan bir süreç gerekiyor.
    * `standalone`, node_modules'ü de içine katarak tek klasör üretiyor.
    */
-  output: 'standalone',
+  output: "standalone",
   /*
    * Dosya izini bu klasörle sınırla.
    *
@@ -27,10 +27,15 @@ const nextConfig = {
    * dosyaları eziliyor ve her sayfa 'Cannot find module ./705.js' ile
    * 500 dönüyor. Bir kez başımıza geldi.
    */
-  distDir: process.env.NODE_ENV === 'production' ? '.next-build' : '.next',
+  distDir: process.env.NODE_ENV === "production" ? ".next-build" : ".next",
   // Panel yalnız iç kullanım: arama motorlarına ve önbelleklere kapalı.
   async headers() {
-    return [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }];
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
   },
 };
 export default nextConfig;
