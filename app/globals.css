@@ -1,19 +1,17 @@
-/* iBERRY geliştirici paneli.
-   Kasıtlı olarak yönetim konsolundan farklı görünüyor: koyu, yoğun, teknik.
-   Yanlışlıkla "müşteriye gösterilen ekran" sanılmasın. */
+/* Apple web appearance. Technical information density and authorization remain unchanged. */
 
 :root {
-  --zemin: #0f1115;
-  --kart: #171a21;
-  --kart-2: #1e222b;
-  --cizgi: #2a2f3a;
-  --metin: #e6e9ef;
-  --metin-2: #949cad;
-  --vurgu: #ffd600;
-  --ok: #3fb950;
-  --uyari: #d29922;
-  --hata: #f85149;
-  --mavi: #58a6ff;
+  --zemin: var(--apple-ink);
+  --kart: var(--apple-ink);
+  --kart-2: var(--apple-ink);
+  --cizgi: var(--apple-ink);
+  --metin: var(--apple-background);
+  --metin-2: var(--apple-tertiary);
+  --vurgu: var(--apple-accent-soft);
+  --ok: var(--apple-success);
+  --uyari: var(--apple-warning);
+  --hata: var(--apple-danger);
+  --mavi: var(--apple-accent-soft);
   --r: 8px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
@@ -24,7 +22,7 @@ body {
   margin: 0;
   background: var(--zemin);
   color: var(--metin);
-  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font: 14px/1.55 var(--apple-font-text);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -180,7 +178,7 @@ td.sonuk, .sonuk { color: var(--metin-2); }
 .giris input:focus { outline: none; border-color: var(--mavi); }
 .giris button {
   width: 100%; margin-top: 6px;
-  background: var(--vurgu); color: #16181d; border: none;
+  background: var(--vurgu); color: var(--apple-ink); border: none;
   border-radius: 6px; padding: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
 }
 .giris button:disabled { opacity: 0.6; cursor: default; }
