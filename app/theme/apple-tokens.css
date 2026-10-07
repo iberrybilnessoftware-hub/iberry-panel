@@ -1,8 +1,12 @@
 /* Apple web reference inspected 2026-10-02: homepage, Store and Mac.
    Native system fonts only; no Apple font or product asset is redistributed. */
 :root {
-  --apple-font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --apple-font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --apple-font-text:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial,
+    sans-serif;
+  --apple-font-display:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue",
+    Arial, sans-serif;
   --apple-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --apple-ink: #1d1d1f;
   --apple-muted: #6e6e73;
@@ -24,10 +28,10 @@
   --apple-danger-soft: #fff0ee;
   --apple-phase2: #8e44ad;
   --apple-phase2-soft: #f4edfa;
-  --apple-nav: rgba(29, 29, 31, .88);
-  --apple-glass: rgba(255, 255, 255, .88);
+  --apple-nav: rgba(29, 29, 31, 0.88);
+  --apple-glass: rgba(255, 255, 255, 0.88);
   --apple-radius: 28px;
   --apple-control-radius: 12px;
-  --apple-shadow: 0 8px 28px rgba(0, 0, 0, .045);
-  --apple-floating-shadow: 0 16px 44px rgba(0, 0, 0, .14);
+  --apple-shadow: 0 8px 28px rgba(0, 0, 0, 0.045);
+  --apple-floating-shadow: 0 16px 44px rgba(0, 0, 0, 0.14);
 }

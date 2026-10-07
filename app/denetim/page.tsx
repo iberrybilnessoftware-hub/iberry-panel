@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { useCallback, useEffect, useState } from "react";
+import { api } from "../lib/api";
 
 /**
  * Denetim Kayıtları — kim, ne zaman, neyi değiştirdi.
@@ -25,35 +25,51 @@ interface Kayit {
 }
 
 const zaman = (iso: string) =>
-  new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  new Date(iso).toLocaleString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
 export default function Denetim() {
   const [kayitlar, setKayitlar] = useState<Kayit[] | null>(null);
   const [hata, setHata] = useState<string | null>(null);
-  const [q, setQ] = useState('');
-  const [uygulanan, setUygulanan] = useState('');
+  const [q, setQ] = useState("");
+  const [uygulanan, setUygulanan] = useState("");
 
   const yukle = useCallback(async (arama: string) => {
-    const p = new URLSearchParams({ limit: '200' });
-    if (arama) p.set('q', arama);
-    try { setKayitlar(await api<Kayit[]>(`dev/audit?${p}`)); setHata(null); }
-    catch (e) { setHata(e instanceof Error ? e.message : 'Alınamadı'); }
+    const p = new URLSearchParams({ limit: "200" });
+    if (arama) p.set("q", arama);
+    try {
+      setKayitlar(await api<Kayit[]>(`dev/audit?${p}`));
+      setHata(null);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Alınamadı");
+    }
   }, []);
 
-  useEffect(() => { void yukle(uygulanan); }, [yukle, uygulanan]);
+  useEffect(() => {
+    void yukle(uygulanan);
+  }, [yukle, uygulanan]);
 
   return (
     <>
       <h1>Denetim Kayıtları</h1>
       <p className="altbaslik">
-        Kim ne zaman neyi değiştirdi. Korelasyon numarası, Hata Akışı&apos;ndaki istek numarasıyla aynı.
+        Kim ne zaman neyi değiştirdi. Korelasyon numarası, Hata Akışı&apos;ndaki
+        istek numarasıyla aynı.
       </p>
 
       {hata && <div className="hata-kutu">{hata}</div>}
 
       <form
         className="arac"
-        onSubmit={(e) => { e.preventDefault(); setUygulanan(q.trim()); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          setUygulanan(q.trim());
+        }}
       >
         <input
           placeholder="işlem, varlık ya da korelasyon numarası"
@@ -62,7 +78,15 @@ export default function Denetim() {
         />
         <button type="submit">Ara</button>
         {uygulanan && (
-          <button type="button" onClick={() => { setQ(''); setUygulanan(''); }}>Temizle</button>
+          <button
+            type="button"
+            onClick={() => {
+              setQ("");
+              setUygulanan("");
+            }}
+          >
+            Temizle
+          </button>
         )}
         {kayitlar && <span className="sayac">{kayitlar.length} kayıt</span>}
       </form>
@@ -71,7 +95,14 @@ export default function Denetim() {
       {kayitlar?.length === 0 && (
         <div className="bos">
           Kayıt bulunamadı.
-          {uygulanan && <><br /><span className="sonuk">&quot;{uygulanan}&quot; aramasıyla eşleşen yok.</span></>}
+          {uygulanan && (
+            <>
+              <br />
+              <span className="sonuk">
+                &quot;{uygulanan}&quot; aramasıyla eşleşen yok.
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -79,7 +110,14 @@ export default function Denetim() {
         <div className="tablo-sar">
           <table>
             <thead>
-              <tr><th>Zaman</th><th>İşlem</th><th>Varlık</th><th>Kişi</th><th>Şube</th><th>Korelasyon</th></tr>
+              <tr>
+                <th>Zaman</th>
+                <th>İşlem</th>
+                <th>Varlık</th>
+                <th>Kişi</th>
+                <th>Şube</th>
+                <th>Korelasyon</th>
+              </tr>
             </thead>
             <tbody>
               {kayitlar.map((k) => (
@@ -88,14 +126,22 @@ export default function Denetim() {
                   <td className="mono">{k.islem}</td>
                   <td>
                     {k.varlik}
-                    {k.varlikId && <div className="mono sonuk" style={{ fontSize: 11 }}>{k.varlikId.slice(0, 8)}…</div>}
+                    {k.varlikId && (
+                      <div className="mono sonuk" style={{ fontSize: 11 }}>
+                        {k.varlikId.slice(0, 8)}…
+                      </div>
+                    )}
                   </td>
                   <td>
                     {k.kisi ?? <span className="sonuk">sistem</span>}
-                    {k.eposta && <div className="sonuk" style={{ fontSize: 11 }}>{k.eposta}</div>}
+                    {k.eposta && (
+                      <div className="sonuk" style={{ fontSize: 11 }}>
+                        {k.eposta}
+                      </div>
+                    )}
                   </td>
-                  <td className="sonuk">{k.sube ?? '—'}</td>
-                  <td className="mono sonuk">{k.korelasyon ?? '—'}</td>
+                  <td className="sonuk">{k.sube ?? "—"}</td>
+                  <td className="mono sonuk">{k.korelasyon ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

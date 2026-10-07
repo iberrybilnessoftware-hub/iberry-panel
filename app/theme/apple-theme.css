@@ -1,42 +1,167 @@
 /* Apple web adaptation: light reading surfaces, dark navigation, readable technical output. */
-html { color-scheme: light; }
+html {
+  color-scheme: light;
+}
 :root {
- --zemin: var(--apple-background); --kart: var(--apple-surface); --kart-2: var(--apple-soft);
- --cizgi: var(--apple-border); --metin: var(--apple-ink); --metin-2: var(--apple-muted);
- --vurgu: var(--apple-accent); --ok: var(--apple-success); --uyari: var(--apple-warning);
- --hata: var(--apple-danger); --mavi: var(--apple-accent-text); --r: 16px; --mono: var(--apple-font-mono);
+  --zemin: var(--apple-background);
+  --kart: var(--apple-surface);
+  --kart-2: var(--apple-soft);
+  --cizgi: var(--apple-border);
+  --metin: var(--apple-ink);
+  --metin-2: var(--apple-muted);
+  --vurgu: var(--apple-accent);
+  --ok: var(--apple-success);
+  --uyari: var(--apple-warning);
+  --hata: var(--apple-danger);
+  --mavi: var(--apple-accent-text);
+  --r: 16px;
+  --mono: var(--apple-font-mono);
 }
-body { font-family: var(--apple-font-text); }
-:is(h1,h2,h3,h4) { font-family: var(--apple-font-display); font-weight: 600; letter-spacing: -.025em; }
-h1 { font-size: 28px; }
-:is(button,input,select,textarea) { font-family: inherit; }
-:is(button,a,input,select,textarea):focus-visible { outline: 3px solid var(--apple-accent); outline-offset: 3px; }
-:is(input,select,textarea) { accent-color: var(--apple-accent); }
-.yan { background: var(--apple-ink); color: #fff; border-color: #ffffff24; }
-.yan .marka, .yan-alt { border-color: #ffffff24; }
-.yan .marka span, .yan-alt, .yan nav a { color: #ffffffb3; }
-.yan nav a { border-radius: 12px; }
-.yan nav a:hover { background: #ffffff14; color: #fff; }
-.yan nav a.etkin { background: var(--apple-accent); color: #fff; }
-.yan-alt button { border-color: #ffffff40; color: #fff; border-radius: 980px; }
-.kart { border-radius: 24px; border-color: var(--apple-divider); box-shadow: var(--apple-shadow); }
-.giris form { max-width: 400px; border-radius: var(--apple-radius); padding: 32px; box-shadow: var(--apple-shadow); }
-.giris input, .arac :is(input,select), textarea { border-radius: var(--apple-control-radius); }
-.giris button, .arac button { background: var(--apple-accent); border-color: var(--apple-accent); color: #fff; border-radius: 980px; min-height: 36px; }
-.giris button { min-height: 44px; }
-pre, code, .mono { font-family: var(--apple-font-mono); }
-pre, textarea.sql { background: var(--apple-soft); color: var(--apple-ink); }
+body {
+  font-family: var(--apple-font-text);
+}
+:is(h1, h2, h3, h4) {
+  font-family: var(--apple-font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+h1 {
+  font-size: 28px;
+}
+:is(button, input, select, textarea) {
+  font-family: inherit;
+}
+:is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid var(--apple-accent);
+  outline-offset: 3px;
+}
+:is(input, select, textarea) {
+  accent-color: var(--apple-accent);
+}
+.yan {
+  background: var(--apple-ink);
+  color: #fff;
+  border-color: #ffffff24;
+}
+.yan .marka,
+.yan-alt {
+  border-color: #ffffff24;
+}
+.yan .marka span,
+.yan-alt,
+.yan nav a {
+  color: #ffffffb3;
+}
+.yan nav a {
+  border-radius: 12px;
+}
+.yan nav a:hover {
+  background: #ffffff14;
+  color: #fff;
+}
+.yan nav a.etkin {
+  background: var(--apple-accent);
+  color: #fff;
+}
+.yan-alt button {
+  border-color: #ffffff40;
+  color: #fff;
+  border-radius: 980px;
+}
+.kart {
+  border-radius: 24px;
+  border-color: var(--apple-divider);
+  box-shadow: var(--apple-shadow);
+}
+.giris form {
+  max-width: 400px;
+  border-radius: var(--apple-radius);
+  padding: 32px;
+  box-shadow: var(--apple-shadow);
+}
+.giris input,
+.arac :is(input, select),
+textarea {
+  border-radius: var(--apple-control-radius);
+}
+.giris button,
+.arac button {
+  background: var(--apple-accent);
+  border-color: var(--apple-accent);
+  color: #fff;
+  border-radius: 980px;
+  min-height: 36px;
+}
+.giris button {
+  min-height: 44px;
+}
+pre,
+code,
+.mono {
+  font-family: var(--apple-font-mono);
+}
+pre,
+textarea.sql {
+  background: var(--apple-soft);
+  color: var(--apple-ink);
+}
 @media (max-width: 700px) {
- .kabuk { flex-direction: column; }
- .yan { width: 100%; padding: 12px; }
- .yan nav { flex-direction: row; flex-wrap: wrap; padding: 0; gap: 4px; }
- .yan nav a { min-height: 44px; padding: 8px 12px; }
- .marka { padding: 0 6px 12px; }
- .yan-alt { padding: 12px 6px 0; }
- .yan-alt button { width: auto; min-height: 36px; padding: 6px 18px; margin-inline-start: 12px; }
- .icerik { padding: 20px 16px 40px; }
- .tablo-sar { overflow-x: auto; }
- .arac input,.arac select { min-width: min(190px,100%); }
+  .kabuk {
+    flex-direction: column;
+  }
+  .yan {
+    width: 100%;
+    padding: 12px;
+  }
+  .yan nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 0;
+    gap: 4px;
+  }
+  .yan nav a {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+  .marka {
+    padding: 0 6px 12px;
+  }
+  .yan-alt {
+    padding: 12px 6px 0;
+  }
+  .yan-alt button {
+    width: auto;
+    min-height: 36px;
+    padding: 6px 18px;
+    margin-inline-start: 12px;
+  }
+  .icerik {
+    padding: 20px 16px 40px;
+  }
+  .tablo-sar {
+    overflow-x: auto;
+  }
+  .arac input,
+  .arac select {
+    min-width: min(190px, 100%);
+  }
 }
-@media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
-@media print { body { background: #fff; color: #000; } .kart { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .kart {
+    box-shadow: none;
+  }
+}

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { api } from './lib/api';
+import { useCallback, useEffect, useState } from "react";
+import { api } from "./lib/api";
 
 /**
  * Sistem Durumu — "bu kurulumda neler açık, neler eksik".
@@ -12,13 +12,28 @@ import { api } from './lib/api';
  */
 
 interface Durum {
-  surum: { node: string; ortam: string; calismaSuresiSn: number; baslangic: string };
-  konum: {
-    kapi: 'on' | 'off';
-    uyari: string | null;
-    kayitliKonumlar: Array<{ cidr: string; etiket: string; sube: string | null; sonGorulme: string | null }>;
+  surum: {
+    node: string;
+    ortam: string;
+    calismaSuresiSn: number;
+    baslangic: string;
   };
-  sube: { varsayilanKod: string | null; varsayilanBulundu: boolean | null; uyari: string | null; subeler: string[] };
+  konum: {
+    kapi: "on" | "off";
+    uyari: string | null;
+    kayitliKonumlar: Array<{
+      cidr: string;
+      etiket: string;
+      sube: string | null;
+      sonGorulme: string | null;
+    }>;
+  };
+  sube: {
+    varsayilanKod: string | null;
+    varsayilanBulundu: boolean | null;
+    uyari: string | null;
+    subeler: string[];
+  };
   varlik: {
     ajanAnahtari: { tanimli: boolean; uzunluk: number };
     uyari: string | null;
@@ -27,12 +42,23 @@ interface Durum {
     canliEsikMs: number;
     bosluEsikMs: number;
   };
-  ai: { saglayici: string | null; model: string | null; anahtar: { tanimli: boolean; uzunluk: number } };
-  entegrasyon: { apiAnahtari: { tanimli: boolean; uzunluk: number }; b2bWebhook: string | null };
+  ai: {
+    saglayici: string | null;
+    model: string | null;
+    anahtar: { tanimli: boolean; uzunluk: number };
+  };
+  entegrasyon: {
+    apiAnahtari: { tanimli: boolean; uzunluk: number };
+    b2bWebhook: string | null;
+  };
   sunucu:
     | { var: false }
     | {
-        var: true; makine: string; cekirdek: number; yasSn: number; taze: boolean;
+        var: true;
+        makine: string;
+        cekirdek: number;
+        yasSn: number;
+        taze: boolean;
         yuk: { d1: number | null; d5: number | null; d15: number | null };
         bellek: { toplamGb: number; kullanilanGb: number; yuzde: number };
         disk: { toplamGb: number; kullanilanGb: number; yuzde: number } | null;
@@ -45,49 +71,90 @@ interface Durum {
 const sure = (sn: number) => {
   if (sn < 60) return `${sn} sn`;
   if (sn < 3600) return `${Math.floor(sn / 60)} dk`;
-  if (sn < 86400) return `${Math.floor(sn / 3600)} sa ${Math.floor((sn % 3600) / 60)} dk`;
+  if (sn < 86400)
+    return `${Math.floor(sn / 3600)} sa ${Math.floor((sn % 3600) / 60)} dk`;
   return `${Math.floor(sn / 86400)} gün`;
 };
 
 const zaman = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  iso
+    ? new Date(iso).toLocaleString("tr-TR", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
 
 const Var = ({ v }: { v: { tanimli: boolean; uzunluk: number } }) =>
-  v.tanimli
-    ? <span className="rozet r-ok">tanımlı · {v.uzunluk} karakter</span>
-    : <span className="rozet r-hata">tanımsız</span>;
+  v.tanimli ? (
+    <span className="rozet r-ok">tanımlı · {v.uzunluk} karakter</span>
+  ) : (
+    <span className="rozet r-hata">tanımsız</span>
+  );
 
 export default function SistemDurumu() {
   const [d, setD] = useState<Durum | null>(null);
   const [hata, setHata] = useState<string | null>(null);
 
   const yukle = useCallback(async () => {
-    try { setD(await api<Durum>('dev/system')); setHata(null); }
-    catch (e) { setHata(e instanceof Error ? e.message : 'Alınamadı'); }
+    try {
+      setD(await api<Durum>("dev/system"));
+      setHata(null);
+    } catch (e) {
+      setHata(e instanceof Error ? e.message : "Alınamadı");
+    }
   }, []);
 
-  useEffect(() => { void yukle(); }, [yukle]);
+  useEffect(() => {
+    void yukle();
+  }, [yukle]);
 
-  if (hata) return <><h1>Sistem Durumu</h1><div className="hata-kutu">{hata}</div></>;
+  if (hata)
+    return (
+      <>
+        <h1>Sistem Durumu</h1>
+        <div className="hata-kutu">{hata}</div>
+      </>
+    );
   if (!d) return <div className="bos">Yükleniyor…</div>;
 
-  const uyarilar = [d.konum.uyari, d.sube.uyari, d.varlik.uyari].filter(Boolean) as string[];
+  const uyarilar = [d.konum.uyari, d.sube.uyari, d.varlik.uyari].filter(
+    Boolean,
+  ) as string[];
 
   return (
     <>
       <h1>Sistem Durumu</h1>
-      <p className="altbaslik">Çalışan kurulumun ayarları ve bilinen yanlış yapılandırmalar</p>
+      <p className="altbaslik">
+        Çalışan kurulumun ayarları ve bilinen yanlış yapılandırmalar
+      </p>
 
-      {uyarilar.length > 0
-        ? uyarilar.map((u) => <div key={u} className="uyari-kutu"><b>Dikkat:</b> {u}</div>)
-        : <div className="uyari-kutu" style={{ borderColor: 'color-mix(in srgb, var(--ok) 55%, transparent)', background: 'color-mix(in srgb, var(--ok) 8%, transparent)' }}>
-            Bilinen bir yapılandırma sorunu yok.
-          </div>}
+      {uyarilar.length > 0 ? (
+        uyarilar.map((u) => (
+          <div key={u} className="uyari-kutu">
+            <b>Dikkat:</b> {u}
+          </div>
+        ))
+      ) : (
+        <div
+          className="uyari-kutu"
+          style={{
+            borderColor: "color-mix(in srgb, var(--ok) 55%, transparent)",
+            background: "color-mix(in srgb, var(--ok) 8%, transparent)",
+          }}
+        >
+          Bilinen bir yapılandırma sorunu yok.
+        </div>
+      )}
 
       <div className="arac">
-        <button type="button" onClick={() => void yukle()}>Yenile</button>
+        <button type="button" onClick={() => void yukle()}>
+          Yenile
+        </button>
         <span className="sayac">
-          {d.surum.ortam} · Node {d.surum.node} · {sure(d.surum.calismaSuresiSn)} ayakta
+          {d.surum.ortam} · Node {d.surum.node} ·{" "}
+          {sure(d.surum.calismaSuresiSn)} ayakta
         </span>
       </div>
 
@@ -96,15 +163,24 @@ export default function SistemDurumu() {
           <h2>Konum kapısı</h2>
           <div className="satir">
             <span>Durum</span>
-            <span>{d.konum.kapi === 'on'
-              ? <span className="rozet r-ok">açık — engelliyor</span>
-              : <span className="rozet r-sonuk">kapalı — gözlem</span>}</span>
+            <span>
+              {d.konum.kapi === "on" ? (
+                <span className="rozet r-ok">açık — engelliyor</span>
+              ) : (
+                <span className="rozet r-sonuk">kapalı — gözlem</span>
+              )}
+            </span>
           </div>
-          <div className="satir"><span>Kayıtlı konum</span><span>{d.konum.kayitliKonumlar.length}</span></div>
+          <div className="satir">
+            <span>Kayıtlı konum</span>
+            <span>{d.konum.kayitliKonumlar.length}</span>
+          </div>
           {d.konum.kayitliKonumlar.map((k) => (
             <div className="satir" key={k.cidr}>
               <span>{k.etiket}</span>
-              <span>{k.cidr} → {k.sube ?? 'merkez'}</span>
+              <span>
+                {k.cidr} → {k.sube ?? "merkez"}
+              </span>
             </div>
           ))}
         </section>
@@ -113,13 +189,24 @@ export default function SistemDurumu() {
           <h2>Şube belirleme</h2>
           <div className="satir">
             <span>Varsayılan şube</span>
-            <span>{d.sube.varsayilanKod
-              ? (d.sube.varsayilanBulundu
-                ? <span className="rozet r-uyari">{d.sube.varsayilanKod}</span>
-                : <span className="rozet r-hata">{d.sube.varsayilanKod} — yok</span>)
-              : <span className="rozet r-sonuk">tanımsız</span>}</span>
+            <span>
+              {d.sube.varsayilanKod ? (
+                d.sube.varsayilanBulundu ? (
+                  <span className="rozet r-uyari">{d.sube.varsayilanKod}</span>
+                ) : (
+                  <span className="rozet r-hata">
+                    {d.sube.varsayilanKod} — yok
+                  </span>
+                )
+              ) : (
+                <span className="rozet r-sonuk">tanımsız</span>
+              )}
+            </span>
           </div>
-          <div className="satir"><span>Tanımlı şubeler</span><span>{d.sube.subeler.join(', ') || '—'}</span></div>
+          <div className="satir">
+            <span>Tanımlı şubeler</span>
+            <span>{d.sube.subeler.join(", ") || "—"}</span>
+          </div>
           <div className="satir">
             <span>Sıra</span>
             <span className="sonuk">konum → jeton → varsayılan</span>
@@ -128,42 +215,83 @@ export default function SistemDurumu() {
 
         <section className="kart">
           <h2>Varlık ajanı</h2>
-          <div className="satir"><span>AGENT_KEY</span><span><Var v={d.varlik.ajanAnahtari} /></span></div>
-          <div className="satir"><span>Kayıtlı cihaz</span><span>{d.varlik.kayitliCihaz}</span></div>
-          <div className="satir"><span>Son bildirim</span><span>{zaman(d.varlik.sonBildirim)}</span></div>
-          <div className="satir"><span>Ağda sayılma</span><span>{Math.round(d.varlik.canliEsikMs / 1000)} sn</span></div>
-          <div className="satir"><span>Mesai boşluğu</span><span>{Math.round(d.varlik.bosluEsikMs / 60000)} dk</span></div>
+          <div className="satir">
+            <span>AGENT_KEY</span>
+            <span>
+              <Var v={d.varlik.ajanAnahtari} />
+            </span>
+          </div>
+          <div className="satir">
+            <span>Kayıtlı cihaz</span>
+            <span>{d.varlik.kayitliCihaz}</span>
+          </div>
+          <div className="satir">
+            <span>Son bildirim</span>
+            <span>{zaman(d.varlik.sonBildirim)}</span>
+          </div>
+          <div className="satir">
+            <span>Ağda sayılma</span>
+            <span>{Math.round(d.varlik.canliEsikMs / 1000)} sn</span>
+          </div>
+          <div className="satir">
+            <span>Mesai boşluğu</span>
+            <span>{Math.round(d.varlik.bosluEsikMs / 60000)} dk</span>
+          </div>
         </section>
 
         <section className="kart">
           <h2>Yapay zekâ</h2>
-          <div className="satir"><span>Sağlayıcı</span><span>{d.ai.saglayici ?? '—'}</span></div>
-          <div className="satir"><span>Model</span><span>{d.ai.model ?? '—'}</span></div>
-          <div className="satir"><span>API anahtarı</span><span><Var v={d.ai.anahtar} /></span></div>
+          <div className="satir">
+            <span>Sağlayıcı</span>
+            <span>{d.ai.saglayici ?? "—"}</span>
+          </div>
+          <div className="satir">
+            <span>Model</span>
+            <span>{d.ai.model ?? "—"}</span>
+          </div>
+          <div className="satir">
+            <span>API anahtarı</span>
+            <span>
+              <Var v={d.ai.anahtar} />
+            </span>
+          </div>
         </section>
 
         <section className="kart">
           <h2>Entegrasyon</h2>
-          <div className="satir"><span>API anahtarı</span><span><Var v={d.entegrasyon.apiAnahtari} /></span></div>
-          <div className="satir"><span>B2B webhook</span><span>{d.entegrasyon.b2bWebhook ?? '—'}</span></div>
+          <div className="satir">
+            <span>API anahtarı</span>
+            <span>
+              <Var v={d.entegrasyon.apiAnahtari} />
+            </span>
+          </div>
+          <div className="satir">
+            <span>B2B webhook</span>
+            <span>{d.entegrasyon.b2bWebhook ?? "—"}</span>
+          </div>
         </section>
 
         <section className="kart">
           <h2>Sunucu</h2>
           {!d.sunucu.var ? (
             <p className="sonuk" style={{ fontSize: 12.5, margin: 0 }}>
-              Sunucu ajanı bildirim göndermemiş. Host değerleri konteynerin içinden
-              görünmüyor; <code>agent/sunucu-ajani.mjs</code> sunucuda çalışmalı.
+              Sunucu ajanı bildirim göndermemiş. Host değerleri konteynerin
+              içinden görünmüyor; <code>agent/sunucu-ajani.mjs</code> sunucuda
+              çalışmalı.
             </p>
           ) : (
             <>
               <div className="satir">
                 <span>Makine</span>
                 <span>
-                  {d.sunucu.makine}{' '}
-                  {d.sunucu.taze
-                    ? <span className="rozet r-ok">{d.sunucu.yasSn} sn önce</span>
-                    : <span className="rozet r-hata">{Math.round(d.sunucu.yasSn / 60)} dk önce — bayat</span>}
+                  {d.sunucu.makine}{" "}
+                  {d.sunucu.taze ? (
+                    <span className="rozet r-ok">{d.sunucu.yasSn} sn önce</span>
+                  ) : (
+                    <span className="rozet r-hata">
+                      {Math.round(d.sunucu.yasSn / 60)} dk önce — bayat
+                    </span>
+                  )}
                 </span>
               </div>
               {/* Yük çekirdek sayısıyla birlikte okunmalı: 8 çekirdekte 4.0
@@ -171,15 +299,18 @@ export default function SistemDurumu() {
               <div className="satir">
                 <span>Yük (1/5/15 dk)</span>
                 <span>
-                  {d.sunucu.yuk.d1?.toFixed(2)} / {d.sunucu.yuk.d5?.toFixed(2)} / {d.sunucu.yuk.d15?.toFixed(2)}
+                  {d.sunucu.yuk.d1?.toFixed(2)} / {d.sunucu.yuk.d5?.toFixed(2)}{" "}
+                  / {d.sunucu.yuk.d15?.toFixed(2)}
                   <span className="sonuk"> · {d.sunucu.cekirdek} çekirdek</span>
                 </span>
               </div>
               <div className="satir">
                 <span>Bellek</span>
                 <span>
-                  {d.sunucu.bellek.kullanilanGb} / {d.sunucu.bellek.toplamGb} GB{' '}
-                  <span className={`rozet ${d.sunucu.bellek.yuzde > 90 ? 'r-hata' : d.sunucu.bellek.yuzde > 75 ? 'r-uyari' : 'r-sonuk'}`}>
+                  {d.sunucu.bellek.kullanilanGb} / {d.sunucu.bellek.toplamGb} GB{" "}
+                  <span
+                    className={`rozet ${d.sunucu.bellek.yuzde > 90 ? "r-hata" : d.sunucu.bellek.yuzde > 75 ? "r-uyari" : "r-sonuk"}`}
+                  >
                     %{d.sunucu.bellek.yuzde}
                   </span>
                 </span>
@@ -188,19 +319,28 @@ export default function SistemDurumu() {
                 <div className="satir">
                   <span>Disk</span>
                   <span>
-                    {d.sunucu.disk.kullanilanGb} / {d.sunucu.disk.toplamGb} GB{' '}
-                    <span className={`rozet ${d.sunucu.disk.yuzde > 90 ? 'r-hata' : d.sunucu.disk.yuzde > 80 ? 'r-uyari' : 'r-sonuk'}`}>
+                    {d.sunucu.disk.kullanilanGb} / {d.sunucu.disk.toplamGb} GB{" "}
+                    <span
+                      className={`rozet ${d.sunucu.disk.yuzde > 90 ? "r-hata" : d.sunucu.disk.yuzde > 80 ? "r-uyari" : "r-sonuk"}`}
+                    >
                       %{d.sunucu.disk.yuzde}
                     </span>
                   </span>
                 </div>
               )}
-              <div className="satir"><span>Ayakta</span><span>{sure(d.sunucu.calismaSuresiSn)}</span></div>
+              <div className="satir">
+                <span>Ayakta</span>
+                <span>{sure(d.sunucu.calismaSuresiSn)}</span>
+              </div>
               {d.sunucu.konteynerler.map((k) => (
                 <div className="satir" key={k.ad}>
                   <span>{k.ad}</span>
                   <span>
-                    <span className={`rozet ${k.durum === 'running' ? 'r-ok' : 'r-hata'}`}>{k.durum}</span>
+                    <span
+                      className={`rozet ${k.durum === "running" ? "r-ok" : "r-hata"}`}
+                    >
+                      {k.durum}
+                    </span>
                   </span>
                 </div>
               ))}
@@ -210,11 +350,21 @@ export default function SistemDurumu() {
 
         <section className="kart">
           <h2>Hata akışı</h2>
-          <div className="satir"><span>Tampondaki kayıt</span><span>{d.hataAkisi.adet} / {d.hataAkisi.kapasite}</span></div>
-          <div className="satir"><span>En eski</span><span>{zaman(d.hataAkisi.enEski)}</span></div>
+          <div className="satir">
+            <span>Tampondaki kayıt</span>
+            <span>
+              {d.hataAkisi.adet} / {d.hataAkisi.kapasite}
+            </span>
+          </div>
+          <div className="satir">
+            <span>En eski</span>
+            <span>{zaman(d.hataAkisi.enEski)}</span>
+          </div>
           <div className="satir">
             <span>Kalıcılık</span>
-            <span className="sonuk">bellekte — sunucu yeniden başlayınca siliniyor</span>
+            <span className="sonuk">
+              bellekte — sunucu yeniden başlayınca siliniyor
+            </span>
           </div>
         </section>
       </div>
